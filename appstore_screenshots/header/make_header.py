@@ -1,7 +1,7 @@
 """App Store product page header (Header and Search Results): 3840x1646 and 5244x2950.
 
     python3 appstore_screenshots/header/make_header.py
-Brand blue background, icon + name + tagline on the left, two app screens on the
+Tide teal-to-indigo background, icon + name + tagline on the left, two app screens on the
 right. Key content stays inside the middle ~70% so device crops don't cut it.
 """
 import base64, os, subprocess
@@ -15,7 +15,7 @@ def b64(path):
 
 ICON = b64(os.path.join(ROOT, "..", "MigraineLog", "Assets.xcassets", "AppIcon.appiconset", "AppIcon-1024.png"))
 HOME = b64(os.path.join(ROOT, "raw", "en-US", "01_Home.png"))
-STATS = b64(os.path.join(ROOT, "raw", "en-US", "05_StatsMore.png"))
+STATS = b64(os.path.join(ROOT, "raw", "en-US", "03_Calendar.png"))
 
 def html(w, h):
     u = h / 1646  # scale unit from the 3840x1646 layout
@@ -23,31 +23,31 @@ def html(w, h):
 * {{ margin:0; padding:0; box-sizing:border-box; }}
 html,body {{ width:{w}px; height:{h}px; overflow:hidden; }}
 body {{
-  font-family:'SF Pro Rounded','SF Pro Display',-apple-system,sans-serif;
-  background-color:#2F5FD0;
+  font-family:'SF Pro Display',-apple-system,sans-serif;
+  background-color:#0E2A2E;
   background-image:
-    radial-gradient(at 10% 15%, rgba(96,140,240,0.95) 0px, transparent 45%),
-    radial-gradient(at 92% 10%, rgba(70,110,225,0.85) 0px, transparent 40%),
-    radial-gradient(at 80% 95%, rgba(30,58,138,0.95) 0px, transparent 50%),
-    radial-gradient(at 5% 90%, rgba(37,75,180,0.90) 0px, transparent 45%);
+    radial-gradient(at 10% 15%, rgba(31,122,114,0.95) 0px, transparent 45%),
+    radial-gradient(at 92% 10%, rgba(44,127,154,0.75) 0px, transparent 40%),
+    radial-gradient(at 80% 95%, rgba(67,81,166,0.85) 0px, transparent 50%),
+    radial-gradient(at 5% 90%, rgba(20,80,90,0.90) 0px, transparent 45%);
   display:flex; align-items:center; justify-content:center; gap:{220*u}px;
 }}
 .text {{ width:{1250*u}px; color:#fff; }}
 .brand {{ display:flex; align-items:center; gap:{44*u}px; }}
-.brand img {{ width:{220*u}px; height:{220*u}px; border-radius:{50*u}px; box-shadow:0 {20*u}px {50*u}px rgba(8,20,60,0.35); }}
+.brand img {{ width:{220*u}px; height:{220*u}px; border-radius:{50*u}px; box-shadow:0 {20*u}px {50*u}px rgba(2,16,20,0.35); }}
 .brand h1 {{ font-size:{150*u}px; font-weight:800; letter-spacing:{-3*u}px; }}
 .tag {{ margin-top:{70*u}px; font-size:{96*u}px; font-weight:700; line-height:1.1; letter-spacing:{-2*u}px; }}
 .sub {{ margin-top:{40*u}px; font-size:{52*u}px; font-weight:500; color:rgba(255,255,255,0.85); }}
 .phones {{ display:flex; align-items:center; gap:{70*u}px; }}
 .phone {{ width:{560*u}px; border-radius:{70*u}px; background:#0E1117; padding:{11*u}px;
-  box-shadow:0 {50*u}px {90*u}px rgba(8,20,60,0.45), 0 {14*u}px {32*u}px rgba(8,20,60,0.30); }}
+  box-shadow:0 {50*u}px {90*u}px rgba(2,16,20,0.45), 0 {14*u}px {32*u}px rgba(2,16,20,0.30); }}
 .phone img {{ width:100%; display:block; border-radius:{60*u}px; }}
 .phone.back {{ transform:translateY({70*u}px); }}
 </style></head><body>
   <div class="text">
-    <div class="brand"><img src="{ICON}"><h1>Simply BP</h1></div>
-    <div class="tag">Your blood pressure,<br>logged in seconds</div>
-    <div class="sub">Daily averages, trends and a report your doctor can read</div>
+    <div class="brand"><img src="{ICON}"><h1>Migraine Log</h1></div>
+    <div class="tag">Your headache diary,<br>calm and simple</div>
+    <div class="sub">Headache days, triggers, what helps, and a report your doctor can read</div>
   </div>
   <div class="phones">
     <div class="phone"><img src="{HOME}"></div>

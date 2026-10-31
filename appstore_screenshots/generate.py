@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simply BP App Store screenshots (from the appstore-screenshots skill template).
+Migraine Log App Store screenshots (from the appstore-screenshots skill template).
 App Store marketing-screenshot generator — HTML/CSS + headless Chrome.
 
 Copy this into the project (e.g. appstore_screenshots/generate.py) and ADAPT:
@@ -25,36 +25,36 @@ CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 # (file, head, sub). <br> controls line breaks. Benefit-driven copy, NO medical
 # claims and no prices (guidelines 1.4.1, 2.3.7). English only: the app is en-US.
 SCREENS = [
-    ("01_Home.png", "Your blood pressure,<br>logged in seconds", "Simple, clear, no clutter"),
-    ("02_AddReading.png", "See where you stand<br>as you type", "Color-coded from Normal to Crisis"),
-    ("06_Report.png", "A report your<br>doctor can read", "Summary, chart and every reading in one PDF"),
-    ("03_Charts.png", "See your trend<br>at a glance", "One point per day, even with several readings"),
-    ("04_Stats.png", "Know your<br>real averages", "Trends, changes and more"),
-    ("05_StatsMore.png", "Watch your days<br>in range grow", "Days by category, morning vs. evening"),
+    ("01_Home.png", "Your headache diary,<br>calm and simple", "Headache-free days and your month at a glance"),
+    ("02_Log.png", "Log a migraine<br>in a few taps", "Pain, triggers and what you took, even mid-attack"),
+    ("03_Calendar.png", "Your month<br>at a glance", "Every day shaded by its worst pain"),
+    ("04_Insights.png", "See your<br>patterns", "Headache and migraine days, month by month"),
+    ("05_InsightsMore.png", "Find what<br>actually helps", "Common triggers and how each medicine worked"),
+    ("06_Report.png", "A report your<br>doctor can read", "Headache days, medication days and every attack"),
     # No paywall shot: it shows the price, and 2.3.7 bars prices in screenshots.
     # raw/en-US/07_Paywall.png is the In-App Purchase review screenshot instead.
 ]
 
-# Brand: the icon's flat blue (#2F5FD0) with lighter and deeper blues in the mesh.
+# Brand: Tide, deep teal moving into indigo, like the icon.
 TEMPLATE = """<!doctype html><html><head><meta charset="utf-8"><style>
 * { margin:0; padding:0; box-sizing:border-box; }
 html,body { width:1320px; height:2868px; overflow:hidden; }
 body {
-  font-family:'SF Pro Rounded','SF Pro Display',-apple-system,sans-serif;
-  background-color:#2F5FD0;
+  font-family:'SF Pro Display',-apple-system,sans-serif;
+  background-color:#0E2A2E;
   background-image:
-    radial-gradient(at 12% 10%, rgba(96,140,240,0.95) 0px, transparent 48%),
-    radial-gradient(at 90% 14%, rgba(70,110,225,0.85) 0px, transparent 44%),
-    radial-gradient(at 85% 88%, rgba(30,58,138,0.95) 0px, transparent 52%),
-    radial-gradient(at 6% 84%, rgba(37,75,180,0.90) 0px, transparent 48%);
+    radial-gradient(at 12% 8%, rgba(31,122,114,0.95) 0px, transparent 50%),
+    radial-gradient(at 92% 16%, rgba(44,127,154,0.75) 0px, transparent 44%),
+    radial-gradient(at 85% 90%, rgba(67,81,166,0.85) 0px, transparent 52%),
+    radial-gradient(at 6% 86%, rgba(20,80,90,0.90) 0px, transparent 48%);
   display:flex; flex-direction:column; align-items:center;
 }
 .head { margin-top:150px; text-align:center; padding:0 70px; }
-.head h1 { font-size:100px; font-weight:800; line-height:1.07; letter-spacing:-2px; color:#FFFFFF; }
+.head h1 { font-size:100px; font-weight:700; line-height:1.07; letter-spacing:-2px; color:#FFFFFF; }
 .head p  { font-size:46px; font-weight:500; margin-top:34px; color:rgba(255,255,255,0.82); letter-spacing:-0.3px; }
 .phone {
   margin-top:90px; width:1000px; border-radius:110px; background:#0E1117; padding:16px;
-  box-shadow: 0 70px 120px rgba(8,20,60,0.45), 0 20px 44px rgba(8,20,60,0.30);
+  box-shadow: 0 70px 120px rgba(2,16,20,0.55), 0 20px 44px rgba(2,16,20,0.35);
 }
 .phone img { width:100%; display:block; border-radius:94px; }
 </style></head><body>

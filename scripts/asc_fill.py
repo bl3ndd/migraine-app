@@ -1,4 +1,4 @@
-"""Fill Simply BP's App Store Connect metadata from ASO.md (en-US).
+"""Fill Migraine Log's App Store Connect metadata from ASO.md (en-US).
 
 Reuses Mezame's minimal API client and key config (the key never lives in this
 repo): run with Mezame's venv, which has pyjwt + cryptography.
@@ -16,13 +16,13 @@ import sys
 sys.path.insert(0, os.path.expanduser("~/Documents/projects/kpt-diary/scripts/asc_l10n"))
 import asc  # noqa: E402
 
-APP_ID = "6828866713"
+BUNDLE_ID = "white.tea.MigraineLog"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASO = open(os.path.join(ROOT, "ASO.md")).read()
 
-SUBTITLE = "Tracker, Charts & Doctor PDF"
+SUBTITLE = re.search(r"\*\*Subtitle \([^)]*\):\*\* `([^`]+)`", ASO).group(1)
 KEYWORDS = re.search(r"\*\*Keywords \([^)]*\)[^\n]*\n\s*`([^`]+)`", ASO).group(1)
-SITE = "https://bp-app-site.vercel.app"
+SITE = "https://migraine-log-site.vercel.app"
 COPYRIGHT = "2026 Evgenii Varzin"
 REVIEW_EMAIL = "woodoo2013@gmail.com"
 
@@ -40,6 +40,14 @@ def check(label, status, payload):
 
 
 def main():
+    # The app record is created by hand in App Store Connect (the API can't); find it by bundle id.
+    _, apps = asc.req("GET", f"/v1/apps?filter[bundleId]={BUNDLE_ID}")
+    if not apps.get("data"):
+        sys.exit(f"No App Store Connect app with bundle id {BUNDLE_ID} yet: create it in the web UI first.")
+    global APP_ID
+    APP_ID = apps["data"][0]["id"]
+    print(f"app {APP_ID}")
+
     # App info: subtitle + privacy URL, categories.
     _, infos = asc.req("GET", f"/v1/apps/{APP_ID}/appInfos")
     info_id = infos["data"][0]["id"]

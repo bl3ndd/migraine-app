@@ -14,7 +14,7 @@ import urllib.request
 sys.path.insert(0, os.path.expanduser("~/Documents/projects/kpt-diary/scripts/asc_l10n"))
 import asc  # noqa: E402
 
-APP_ID = "6828866713"
+BUNDLE_ID = "white.tea.MigraineLog"
 HERE = os.path.dirname(os.path.abspath(__file__))
 DISPLAY_TYPE = "APP_IPHONE_67"  # takes 1320x2868 (6.9"), as Mezame's sets do
 
@@ -45,6 +45,17 @@ def upload(kind, attributes_create, relationships, path):
         "type": kind, "id": reservation["id"],
         "attributes": {"uploaded": True, "sourceFileChecksum": hashlib.md5(data).hexdigest()}}}))
     print("  uploaded", os.path.basename(path))
+
+
+def app_id():
+    """The app record is created by hand in App Store Connect; find it by bundle id."""
+    _, apps = asc.req("GET", f"/v1/apps?filter[bundleId]={BUNDLE_ID}")
+    if not apps.get("data"):
+        sys.exit(f"No App Store Connect app with bundle id {BUNDLE_ID} yet: create it in the web UI first.")
+    return apps["data"][0]["id"]
+
+
+APP_ID = None
 
 
 def store_screenshots():
@@ -79,5 +90,6 @@ def iap_review_screenshot():
 
 
 if __name__ == "__main__":
+    APP_ID = app_id()
     store_screenshots()
     iap_review_screenshot()
