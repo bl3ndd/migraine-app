@@ -10,7 +10,7 @@ final class StoreScreenshots: XCTestCase {
     override func setUpWithError() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["STORE_SHOTS"] != nil, "set STORE_SHOTS to capture")
         continueAfterFailure = false
-        // The store shows the light "paper" look whatever the phone is set to.
+        // The store shows the light look whatever the phone is set to.
         // This flips the whole phone, so put the owner's setting back afterwards.
         savedAppearance = XCUIDevice.shared.appearance
         XCUIDevice.shared.appearance = .light
@@ -50,31 +50,26 @@ final class StoreScreenshots: XCTestCase {
     @MainActor
     func testProScreens() {
         launch(["-DEMO", "-SNAPSHOT"])
-        XCTAssertTrue(app.buttons["Add Reading"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Log Headache"].waitForExistence(timeout: 10))
         shot("01_Home")
 
-        app.buttons["Add Reading"].tap()
-        let systolic = app.textFields["Systolic"]
-        XCTAssertTrue(systolic.waitForExistence(timeout: 5))
-        systolic.tap()
-        app.typeText("128")
-        waitForFocus(app.textFields["Diastolic"])
-        app.typeText("82")
-        waitForFocus(app.textFields["Pulse"])
-        app.typeText("70")
-        shot("02_AddReading")
+        app.buttons["Log Headache"].tap()
+        XCTAssertTrue(app.buttons["Pain 7"].waitForExistence(timeout: 5))
+        app.buttons["Pain 7"].tap()
+        app.buttons["Add Sumatriptan 50 mg"].tap()
+        shot("02_Log")
         app.buttons["Cancel"].tap()
 
-        tab("Charts")
-        shot("03_Charts")
+        tab("Calendar")
+        shot("03_Calendar")
 
-        tab("Stats")
-        XCTAssertTrue(app.staticTexts["Average"].waitForExistence(timeout: 5))
-        shot("04_Stats")
+        tab("Insights")
+        XCTAssertTrue(app.staticTexts["Possible triggers"].waitForExistence(timeout: 5))
+        shot("04_Insights")
         app.swipeUp()
-        shot("05_StatsMore")
+        shot("05_InsightsMore")
 
-        tab("Home")
+        tab("Today")
         app.buttons["Doctor Report"].tap()
         app.buttons["Create PDF Report"].tap()
         sleep(2)
@@ -84,9 +79,9 @@ final class StoreScreenshots: XCTestCase {
     @MainActor
     func testPaywall() {
         launch(["-DEMO", "-FREE"])
-        tab("Stats")
+        tab("Insights")
         app.buttons["Unlock Pro"].tap()
-        XCTAssertTrue(app.staticTexts["Simply BP Pro"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Migraine Log Pro"].waitForExistence(timeout: 5))
         shot("07_Paywall")
     }
 }
