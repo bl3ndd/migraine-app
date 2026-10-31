@@ -48,6 +48,30 @@ struct BackupServiceTests {
         #expect(try context.fetchCount(FetchDescriptor<Attack>()) == 1)
     }
 
+    @Test func otherAppsHealthImportIsNotDuplicated() throws {
+        // On a new phone, Health already imported another app's headache under a new attack id.
+        let original = sample()
+        let data = try BackupService.export([original])
+        let context = try makeContext()
+        let imported = Attack(start: original.start, end: original.end, intensity: 8, source: .health, healthKitID: original.healthKitID)
+        context.insert(imported)
+        let result = try BackupService.restore(from: data, into: context)
+        #expect(result == BackupService.ImportResult(added: 0, skipped: 1))
+    }
+
+    @Test func deletedAttacksStayDeleted() throws {
+        let original = sample()
+        let context = try makeContext()
+        let result = try BackupService.restore(from: try BackupService.export([original]), into: context, deletedIDs: [original.id])
+        #expect(result.added == 0)
+    }
+
+    @Test func dosesWithoutIdsStillDecode() throws {
+        let json = #"[{"name":"Ibuprofen","takenAt":0,"effect":"helped"}]"#
+        let doses = try JSONDecoder().decode([MedicationDose].self, from: Data(json.utf8))
+        #expect(doses.first?.name == "Ibuprofen" && doses.first?.effect == .helped)
+    }
+
     @Test func rejectsForeignFiles() throws {
         let context = try makeContext()
         #expect(throws: (any Error).self) { try BackupService.restore(from: Data("{\"hello\": 1}".utf8), into: context) }

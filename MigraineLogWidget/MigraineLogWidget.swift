@@ -96,7 +96,7 @@ struct WidgetView: View {
 
     private var header: some View {
         HStack(spacing: 4) {
-            Image(systemName: "water.waves")
+            Image(systemName: "brain.head.profile")
             Text("Migraine Log")
             Spacer(minLength: 0)
             Image(systemName: "plus.circle.fill").font(.title3)
@@ -133,7 +133,7 @@ struct WidgetView: View {
 
     private var rectangular: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Label("Migraine Log", systemImage: "water.waves").font(.caption2.weight(.semibold))
+            Label("Migraine Log", systemImage: "brain.head.profile").font(.caption2.weight(.semibold))
             if let s = entry.snapshot, let since = s.ongoingSince {
                 Text("Headache since").font(.caption2)
                 Text(since, style: .time).font(.system(size: 20, weight: .semibold)).privacySensitive()
@@ -151,7 +151,7 @@ struct WidgetView: View {
         ZStack {
             AccessoryWidgetBackground()
             if entry.snapshot?.ongoingSince != nil {
-                Image(systemName: "waveform.path.ecg").font(.title3.weight(.semibold))
+                Image(systemName: "timer").font(.title3.weight(.semibold))
             } else if let days = entry.snapshot?.headacheFreeDays(on: entry.date) {
                 VStack(spacing: -2) {
                     Text("\(days)").font(.system(size: 20, weight: .semibold)).privacySensitive()

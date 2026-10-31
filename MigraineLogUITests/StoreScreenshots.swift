@@ -23,7 +23,8 @@ final class StoreScreenshots: XCTestCase {
     @MainActor
     private func launch(_ arguments: [String]) {
         app = XCUIApplication()
-        app.launchArguments = arguments
+        // US formats in the store whatever region the test phone is set to ("6.7", "Oct 31").
+        app.launchArguments = arguments + ["-AppleLocale", "en_US", "-AppleLanguages", "(en-US)"]
         app.launch()
     }
 

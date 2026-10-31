@@ -25,8 +25,8 @@ All tests run on the connected iPhone 13 over USB (`00008110-001A345E1E62401E`):
 ```bash
 xcodebuild test -project MigraineLog.xcodeproj -scheme MigraineLog \
   -destination 'id=<device UDID>' -allowProvisioningUpdates \
-  -only-testing:MigraineLogTests          # 58 unit tests (Swift Testing)
-  # -only-testing:MigraineLogUITests/MigraineLogUITests   # 10 UI tests
+  -only-testing:MigraineLogTests          # 61 unit tests (Swift Testing)
+  # -only-testing:MigraineLogUITests/MigraineLogUITests   # 9 UI tests
 ```
 
 Covered: every `StatsEngine` function (headache/migraine/medication days over midnight and month edges, ongoing attacks, streak, triggers, medicine results, monthly counts), attack limits and model round trips, Health metadata/severity mapping/import/dedup, JSON backup, widget snapshot, PDF content, reminders, review prompt rules, Pro gating, performance on five years.

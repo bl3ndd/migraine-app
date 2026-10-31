@@ -7,8 +7,9 @@ struct MigraineLogApp: App {
     @State private var purchases = PurchaseService()
     @Environment(\.scenePhase) private var scenePhase
     private let container: ModelContainer
-    /// The store on disk couldn't be opened; the app runs on an empty in-memory one and says so.
-    @State private var storeFailed = false
+    /// The store on disk couldn't be opened. The app then shows only an error
+    /// screen: entries made on a stand-in store would vanish on the next launch.
+    private let storeFailed: Bool
 
     init() {
         let settings = AppSettings(defaults: LaunchMode.isThrowaway ? UserDefaults(suiteName: "uitest-\(UUID().uuidString)")! : .standard)
@@ -26,10 +27,11 @@ struct MigraineLogApp: App {
         let config = ModelConfiguration(isStoredInMemoryOnly: LaunchMode.isThrowaway, groupContainer: .none, cloudKitDatabase: .none)
         if let opened = try? ModelContainer(for: Attack.self, configurations: config) {
             container = opened
+            storeFailed = false
         } else {
             // Better than a crash on every launch: the file stays untouched for a later fix or support.
             container = try! ModelContainer(for: Attack.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
-            _storeFailed = State(initialValue: true)
+            storeFailed = true
         }
         if LaunchMode.isDemo {
             for a in DemoData.attacks(now: Date(), calendar: .current, days: LaunchMode.isDemoLarge ? 5 * 365 : 90) {
@@ -43,7 +45,14 @@ struct MigraineLogApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if settings.hasCompletedOnboarding {
+                if storeFailed {
+                    ContentUnavailableView {
+                        Label("Your diary couldn't be opened", systemImage: "exclamationmark.triangle")
+                    } description: {
+                        Text("Nothing has been deleted. Please restart Migraine Log. If this keeps happening, contact support at woodoo2013@gmail.com.")
+                    }
+                    .background(AppColors.bgApp)
+                } else if settings.hasCompletedOnboarding {
                     MainTabView()
                 } else {
                     OnboardingView()
@@ -52,17 +61,12 @@ struct MigraineLogApp: App {
                 .environment(settings)
                 .environment(purchases)
                 .tint(AppColors.accent)
-                .alert("Your diary couldn't be opened", isPresented: $storeFailed) {
-                    Button("OK", role: .cancel) {}
-                } message: {
-                    Text("Nothing has been deleted. Please restart Migraine Log. If this keeps happening, contact support from Settings.")
-                }
                 .onOpenURL { url in
                     if WidgetBridge.isLogLink(url) { settings.pendingLog = true }
                 }
                 .onChange(of: scenePhase) { _, phase in
                     // Picks up headaches other apps wrote to Health while we were away.
-                    guard phase == .active, settings.healthEnabled else { return }
+                    guard phase == .active, settings.healthEnabled, !storeFailed else { return }
                     Task { await HealthService.importNew(into: container.mainContext, deletedIDs: settings.deletedIDs) }
                 }
         }

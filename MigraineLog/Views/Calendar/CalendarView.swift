@@ -71,7 +71,10 @@ struct CalendarView: View {
             .navigationTitle("Calendar")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showingLog = true } label: { Label("Log Headache", systemImage: "plus") }
+                    // One attack at a time: with one going, + opens it to update or end.
+                    Button {
+                        if let going = attacks.last(where: \.isOngoing) { editing = going } else { showingLog = true }
+                    } label: { Label("Log Headache", systemImage: "plus") }
                 }
             }
             .sheet(item: $editing) { LogAttackView(editing: $0) }

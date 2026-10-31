@@ -89,11 +89,28 @@ nonisolated enum MedicationEffect: String, CaseIterable, Codable, Sendable {
     }
 }
 
-/// One dose taken during an attack.
-nonisolated struct MedicationDose: Codable, Equatable, Hashable, Sendable {
+/// One dose taken during an attack. `id` keeps form rows stable while doses
+/// are added and removed; files written before it existed get a fresh one.
+nonisolated struct MedicationDose: Codable, Equatable, Hashable, Identifiable, Sendable {
+    var id = UUID()
     var name: String
     var takenAt: Date
     var effect: MedicationEffect = .unknown
+
+    init(id: UUID = UUID(), name: String, takenAt: Date, effect: MedicationEffect = .unknown) {
+        self.id = id
+        self.name = name
+        self.takenAt = takenAt
+        self.effect = effect
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try c.decode(String.self, forKey: .name)
+        takenAt = try c.decode(Date.self, forKey: .takenAt)
+        effect = try c.decodeIfPresent(MedicationEffect.self, forKey: .effect) ?? .unknown
+    }
 }
 
 /// One headache or migraine attack, from start to end. `end == nil` means it's

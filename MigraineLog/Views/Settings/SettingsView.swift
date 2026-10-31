@@ -194,7 +194,9 @@ struct SettingsView: View {
         let saved = await HealthService.backfill(context)
         syncing = false
         Analytics.track(.healthSynced)
-        message = "Brought in \(imported) headaches from Apple Health and saved \(saved) to it. If nothing moved, check Settings › Health › Data Access & Devices › Migraine Log and allow Headache."
+        let brought = imported == 1 ? "1 headache" : "\(imported) headaches"
+        message = "Brought in \(brought) from Apple Health and saved \(saved) to it."
+            + (imported == 0 && saved == 0 ? " If you expected more, check Settings › Health › Data Access & Devices › Migraine Log and allow Headache." : "")
     }
 
     private func prepareBackup() {
@@ -212,9 +214,9 @@ struct SettingsView: View {
         let opened = url.startAccessingSecurityScopedResource()
         defer { if opened { url.stopAccessingSecurityScopedResource() } }
         do {
-            let outcome = try BackupService.restore(from: try Data(contentsOf: url), into: context)
+            let outcome = try BackupService.restore(from: try Data(contentsOf: url), into: context, deletedIDs: settings.deletedIDs)
             Analytics.track(.backupRestored)
-            message = "Added \(outcome.added) entries. Skipped \(outcome.skipped) you already had."
+            message = "Added \(outcome.added == 1 ? "1 entry" : "\(outcome.added) entries"). Skipped \(outcome.skipped) you already had."
         } catch {
             message = "This file doesn't look like a Migraine Log backup."
         }

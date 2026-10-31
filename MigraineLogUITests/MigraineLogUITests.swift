@@ -98,9 +98,9 @@ final class MigraineLogUITests: XCTestCase {
         launch(["-SKIP_ONBOARDING", "-FREE"])
         app.buttons["Log Headache"].tap()
         app.buttons["Pain 5"].tap()
-        XCTAssertFalse(element(containing: "Call 911").exists)
+        XCTAssertFalse(element(containing: "local emergency number").exists)
         app.buttons["Pain 10"].tap()
-        XCTAssertTrue(element(containing: "Call 911").waitForExistence(timeout: 3))
+        XCTAssertTrue(element(containing: "Call 911 or your local emergency number").waitForExistence(timeout: 3))
     }
 
     @MainActor

@@ -20,10 +20,9 @@ enum Analytics {
         case onboardingStep = "onboarding.step"
         /// `health`, `reminders` = "on" | "off".
         case onboardingCompleted = "onboarding.completed"
+        /// No parameters, and no edit/end/delete events: a signal's timestamp
+        /// alone would say when someone had a headache.
         case attackAdded = "attack.added"
-        case attackEdited = "attack.edited"
-        case attackEnded = "attack.ended"
-        case attackDeleted = "attack.deleted"
         /// `from` = first_attack | stats | report.
         case paywallShown = "paywall.shown"
         case proPurchased = "pro.purchased"

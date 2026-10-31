@@ -115,8 +115,8 @@ private struct StatsContent: View {
                     metric(s.averageDuration.map(DurationText.format) ?? "—", "average length")
                 }
                 if let change {
-                    let text = change == 0 ? "Same number of headache days as the previous \(period.rawValue)."
-                        : "\(abs(change)) \(abs(change) == 1 ? "headache day" : "headache days") \(change < 0 ? "fewer" : "more") than the previous \(period.rawValue)."
+                    let text = change == 0 ? "Same number of headache days as the previous \(period.title)."
+                        : "\(abs(change)) \(abs(change) == 1 ? "headache day" : "headache days") \(change < 0 ? "fewer" : "more") than the previous \(period.title)."
                     Label(text, systemImage: change < 0 ? "arrow.down.right" : change > 0 ? "arrow.up.right" : "equal")
                         .font(.body.weight(.medium))
                         .foregroundStyle(change < 0 ? AppColors.success : AppColors.textPrimary)

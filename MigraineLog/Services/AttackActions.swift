@@ -13,27 +13,41 @@ enum AttackActions {
                 Task { await HealthService.delete(healthKitID: id) }
             }
             context.delete(a)
-            Analytics.track(.attackDeleted)
         }
         try? context.save()
     }
 
+    /// An attack started this long ago is more likely forgotten than still
+    /// going: "It's over" then asks for the end time instead of using now.
+    static let staleAfter: TimeInterval = 72 * 3600
+
+    static func isStale(_ attack: Attack, now: Date = Date()) -> Bool {
+        attack.isOngoing && now.timeIntervalSince(attack.start) > staleAfter
+    }
+
     /// Ends an ongoing attack now and, with Health on, writes it there.
     static func end(_ attack: Attack, at date: Date = Date(), context: ModelContext, settings: AppSettings) {
-        attack.end = max(date, attack.start)
+        attack.end = min(max(date, attack.start), attack.start.addingTimeInterval(AttackLimits.maxDuration))
         try? context.save()
-        Analytics.track(.attackEnded)
         syncToHealth(attack, previousHealthID: nil, context: context, settings: settings)
     }
 
-    /// Mirrors a finished manual attack to Health; an edit replaces the old sample.
+    /// Mirrors a manual attack to Health after a save. Our previous sample is
+    /// always taken out (even with sync off, as delete does), and the attack
+    /// forgets its id at once, so a failed re-save leaves it for the next
+    /// backfill instead of pointing at a sample that's gone.
     static func syncToHealth(_ attack: Attack, previousHealthID: UUID?, context: ModelContext, settings: AppSettings) {
-        guard settings.healthEnabled, attack.source == .manual, attack.end != nil else { return }
+        guard attack.source == .manual else { return }
+        if let previousHealthID {
+            attack.healthKitID = nil
+            try? context.save()
+            Task { await HealthService.delete(healthKitID: previousHealthID) }
+        }
+        guard settings.healthEnabled, attack.end != nil else { return }
         let value = attack.value
         let meta = HealthMeta(attack)
         let attackID = attack.id
         Task {
-            if let previousHealthID { await HealthService.delete(healthKitID: previousHealthID) }
             guard let newID = await HealthService.save(value, meta: meta) else { return }
             // The attack may have been deleted while Health was saving: then
             // take the copy back out instead of writing to a deleted model.

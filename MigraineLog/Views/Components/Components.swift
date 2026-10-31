@@ -170,7 +170,7 @@ struct EmergencyNote: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.title2)
-            Text("Call 911 if this is the worst headache of your life, came on suddenly like a thunderclap, or comes with weakness, numbness, confusion, trouble speaking, a stiff neck with fever, or after a head injury.")
+            Text("Call 911 or your local emergency number if this is the worst headache of your life, came on suddenly like a thunderclap, or comes with weakness, numbness, confusion, trouble speaking, a stiff neck with fever, or after a head injury.")
                 .font(.body.weight(.semibold))
                 .fixedSize(horizontal: false, vertical: true)
         }

@@ -13,6 +13,8 @@ struct OnboardingView: View {
     @State private var reminder = ReminderTime.date(fromMinutes: NotificationService.defaultEvening)
     @State private var picked: Set<String> = []
     @State private var custom = ""
+    /// Health and reminder permission run async; a second tap meanwhile must not skip a step.
+    @State private var working = false
 
     /// Common over-the-counter and prescription names, as one-tap starters.
     static let commonMedicines = ["Ibuprofen", "Acetaminophen", "Naproxen", "Excedrin", "Sumatriptan", "Rizatriptan", "Ubrelvy", "Nurtec"]
@@ -32,11 +34,12 @@ struct OnboardingView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             VStack(spacing: 12) {
-                Button(primaryTitle, action: primary).buttonStyle(PrimaryButtonStyle())
+                Button(primaryTitle, action: primary).buttonStyle(PrimaryButtonStyle()).disabled(working)
                 if step > 0 {
                     Button(step == 2 ? "Not Now" : "Skip", action: next)
                         .font(.body.weight(.medium))
                         .frame(minHeight: 44)
+                        .disabled(working)
                 }
             }
             .padding(24)
@@ -150,7 +153,7 @@ struct OnboardingView: View {
         case 0: "Get Started"
         case 1: picked.isEmpty ? "Continue" : "Save Medicines"
         case 2: "Connect Apple Health"
-        default: "Turn On Reminder"
+        default: reminderOn ? "Turn On Reminder" : "Continue"
         }
     }
 
@@ -164,7 +167,9 @@ struct OnboardingView: View {
             for name in picked.sorted() where !Self.commonMedicines.contains(name) { settings.rememberMedication(name) }
             next()
         case 2:
+            working = true
             Task {
+                defer { working = false }
                 if await HealthService.requestAuthorization() {
                     settings.healthEnabled = true
                     await HealthService.importNew(into: context, deletedIDs: settings.deletedIDs)
@@ -173,7 +178,9 @@ struct OnboardingView: View {
                 next()
             }
         default:
+            working = true
             Task {
+                defer { working = false }
                 if reminderOn, await NotificationService.requestPermission() {
                     settings.reminderMinutes = [ReminderTime.minutes(from: reminder)]
                     NotificationService.schedule(minutes: settings.reminderMinutes)

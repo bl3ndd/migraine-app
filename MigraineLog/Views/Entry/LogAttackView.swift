@@ -7,6 +7,10 @@ import SwiftData
 /// read-only — the app that logged them owns those.
 struct LogAttackView: View {
     var editing: Attack?
+    /// Open with "It's over" already on and the end at now ("Pick the End Time").
+    var endingNow = false
+    /// Called after a new attack (not an edit) is saved.
+    var onSavedNew: (() -> Void)?
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -31,8 +35,16 @@ struct LogAttackView: View {
     private enum Field { case medication, note }
 
     private var isImported: Bool { editing?.source == .health }
+    /// Imported times can't be edited here, so they're never what blocks Save.
     private var problem: String? {
-        AttackLimits.problem(start: start, end: hasEnded ? end : nil, intensity: intensity)
+        isImported ? AttackLimits.problem(start: Date(), end: nil, intensity: intensity)
+            : AttackLimits.problem(start: start, end: hasEnded ? end : nil, intensity: intensity)
+    }
+
+    /// Doses happen during the attack: from its start to its end (or now).
+    private var doseRange: ClosedRange<Date> {
+        let upper = max(start, hasEnded ? end : Date())
+        return start...upper
     }
 
     var body: some View {
@@ -131,7 +143,7 @@ struct LogAttackView: View {
                     .font(.body.weight(.medium))
                     .tint(AppColors.accent)
                 if hasEnded {
-                    DatePicker("Ended", selection: $end, in: start...Date())
+                    DatePicker("Ended", selection: $end, in: min(start, Date())...max(start, Date()))
                         .font(.body.weight(.medium))
                     if end > start {
                         Text("Lasted \(DurationText.format(end.timeIntervalSince(start)))")
@@ -161,8 +173,8 @@ struct LogAttackView: View {
     private var medicationCard: some View {
         CardView {
             VStack(alignment: .leading, spacing: 14) {
-                ForEach(doses.indices, id: \.self) { i in
-                    doseRow(i)
+                ForEach($doses) { $dose in
+                    doseRow($dose)
                     Divider()
                 }
                 let suggestions = settings.medicationNames.filter { name in
@@ -199,25 +211,27 @@ struct LogAttackView: View {
         }
     }
 
-    private func doseRow(_ i: Int) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+    private func doseRow(_ dose: Binding<MedicationDose>) -> some View {
+        let id = dose.wrappedValue.id
+        return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(doses[i].name).font(.headline).foregroundStyle(AppColors.textPrimary)
+                Text(dose.wrappedValue.name).font(.headline).foregroundStyle(AppColors.textPrimary)
                 Spacer()
-                DatePicker("Taken at", selection: $doses[i].takenAt, in: ...Date(), displayedComponents: [.hourAndMinute])
-                    .labelsHidden()
                 Button {
-                    doses.remove(at: i)
+                    doses.removeAll { $0.id == id }
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title2)
                         .foregroundStyle(AppColors.textSecondary)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Remove \(doses[i].name)")
+                .accessibilityLabel("Remove \(dose.wrappedValue.name)")
             }
+            // Date and time: a dose at 2 AM in an attack that began at 10 PM belongs to the next day.
+            DatePicker("Taken", selection: dose.takenAt, in: doseRange)
+                .font(.subheadline)
             Text("Did it help?").font(.subheadline).foregroundStyle(AppColors.textSecondary)
-            SegmentedChips(options: [MedicationEffect.none, .partly, .helped, .unknown], selection: $doses[i].effect) { $0.title }
+            SegmentedChips(options: [MedicationEffect.none, .partly, .helped, .unknown], selection: dose.effect) { $0.title }
         }
     }
 
@@ -226,8 +240,8 @@ struct LogAttackView: View {
     private func addDose(_ name: String) {
         let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else { return }
-        // Logged later from memory: default the time to the attack's start.
-        let takenAt = min(Date(), max(start, hasEnded ? start : Date()))
+        // Still going: taken now. Logged afterwards from memory: at the start.
+        let takenAt = hasEnded ? start : max(start, Date())
         doses.append(MedicationDose(name: clean, takenAt: takenAt))
         newMedication = ""
     }
@@ -237,8 +251,8 @@ struct LogAttackView: View {
         loaded = true
         guard let a = editing else { return }
         start = a.start
-        hasEnded = a.end != nil
-        end = a.end ?? Date()
+        hasEnded = a.end != nil || endingNow
+        end = a.end ?? min(Date(), a.start.addingTimeInterval(AttackLimits.maxDuration))
         intensity = a.intensity
         kind = a.kind
         locations = Set(a.locations)
@@ -254,12 +268,11 @@ struct LogAttackView: View {
         let previousHealthID = editing?.healthKitID
         if let editing {
             attack = editing
-            Analytics.track(.attackEdited)
         } else {
             attack = Attack(start: start, intensity: intensity)
             context.insert(attack)
             ReviewService.recordAttack()
-            Analytics.track(.attackAdded, ["ongoing": hasEnded ? "false" : "true"])
+            Analytics.track(.attackAdded)
         }
         if !isImported {
             attack.start = start
@@ -277,16 +290,9 @@ struct LogAttackView: View {
         try? context.save()
         saved.toggle()
 
-        if attack.source == .manual {
-            if attack.end == nil, let previousHealthID {
-                // Turned back into "still going": Health only holds finished attacks.
-                attack.healthKitID = nil
-                try? context.save()
-                Task { await HealthService.delete(healthKitID: previousHealthID) }
-            } else {
-                AttackActions.syncToHealth(attack, previousHealthID: previousHealthID, context: context, settings: settings)
-            }
-        }
+        // Replaces our old Health copy; an attack turned back into "still going" just loses it.
+        AttackActions.syncToHealth(attack, previousHealthID: previousHealthID, context: context, settings: settings)
+        if editing == nil { onSavedNew?() }
         dismiss()
     }
 }

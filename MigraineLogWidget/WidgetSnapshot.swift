@@ -10,7 +10,7 @@ struct WidgetSnapshot: Codable, Equatable {
 
     static let appGroup = "group.white.tea.MigraineLog"
     static let key = "widgetSnapshot"
-    static let logURL = URL(string: "simplymigraine://log")!
+    static let logURL = URL(string: "migrainelog://log")!
 
     static func load() -> WidgetSnapshot? {
         guard let data = UserDefaults(suiteName: appGroup)?.data(forKey: key) else { return nil }

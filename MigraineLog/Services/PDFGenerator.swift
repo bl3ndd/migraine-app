@@ -49,8 +49,11 @@ enum PDFGenerator {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let url = folder.appendingPathComponent("Headache Diary \(now.formatted(.iso8601.year().month().day())).pdf")
 
-        // A monthly chart once the period spans more than one month.
-        let months = (calendar.dateComponents([.month], from: period.start, to: now).month ?? 0) + 1
+        // A monthly chart of whole months only: a month the period starts halfway
+        // through would show a misleadingly short bar. The current month is in so far.
+        let monthStart = calendar.dateInterval(of: .month, for: period.start)?.start ?? period.start
+        let firstWhole = monthStart == period.start ? monthStart : (calendar.date(byAdding: .month, value: 1, to: monthStart) ?? monthStart)
+        let months = (calendar.dateComponents([.month], from: firstWhole, to: now).month ?? 0) + 1
         let monthly = months >= 2 ? StatsEngine.monthly(values, months: min(months, 24), now: now, calendar: calendar) : []
         let chartImage = monthly.count >= 2 ? renderChart(monthly) : nil
 
@@ -259,7 +262,12 @@ enum PDFGenerator {
                 .position(by: .value("Type", "Migraine days"))
         }
         .chartForegroundStyleScale(["Headache days": Color(white: 0.62), "Migraine days": Color(red: 0.36, green: 0.25, blue: 0.62)])
-        .chartXAxis { AxisMarks(values: .stride(by: .month, count: months.count > 12 ? 3 : 1)) { _ in AxisValueLabel(format: .dateTime.month(.abbreviated)) } }
+        // A year or more repeats month names, so those labels carry the year.
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .month, count: months.count > 12 ? 3 : 1)) { _ in
+                AxisValueLabel(format: months.count >= 12 ? .dateTime.month(.abbreviated).year(.twoDigits) : .dateTime.month(.abbreviated))
+            }
+        }
         .chartLegend(position: .top, alignment: .leading)
         .frame(width: 516, height: 180)
         .padding(4)

@@ -47,17 +47,21 @@ enum BackupService {
         return try encoder.encode(archive)
     }
 
-    /// Additive: an attack already on the device (same id) is left alone, so
-    /// restoring can never destroy what's there.
+    /// Additive: an attack already on the device is left alone, so restoring
+    /// can never destroy what's there. "Already there" is the same attack id or
+    /// the same Health sample — another app's headache imported from Health
+    /// gets a new attack id on each install — and deleted ones stay deleted.
     @discardableResult
-    static func restore(from data: Data, into context: ModelContext) throws -> ImportResult {
+    static func restore(from data: Data, into context: ModelContext, deletedIDs: Set<UUID> = []) throws -> ImportResult {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let archive = try decoder.decode(Archive.self, from: data)
-        let existing = Set(((try? context.fetch(FetchDescriptor<Attack>())) ?? []).map(\.id))
+        let local = (try? context.fetch(FetchDescriptor<Attack>())) ?? []
+        let existing = Set(local.map(\.id)).union(deletedIDs)
+        let healthIDs = Set(local.compactMap(\.healthKitID)).union(deletedIDs)
         var result = ImportResult(added: 0, skipped: 0)
         for item in archive.attacks {
-            guard !existing.contains(item.id) else { result.skipped += 1; continue }
+            guard !existing.contains(item.id), !(item.healthKitID.map(healthIDs.contains) ?? false) else { result.skipped += 1; continue }
             context.insert(item.makeModel())
             result.added += 1
         }

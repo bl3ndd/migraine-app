@@ -142,12 +142,17 @@ struct StatsEngineTests {
         #expect(StatsEngine.headacheDayChange(attacks, period: .all, now: now, calendar: cal) == nil)
     }
 
-    @Test func periodIntervals() {
-        let week = StatsPeriod.month.interval(now: now)!
-        #expect(week.end == now)
-        #expect(week.duration == 30 * 86_400)
-        #expect(StatsPeriod.month.previousInterval(now: now)!.end == week.start)
-        #expect(StatsPeriod.all.interval(now: now) == nil)
+    @Test func periodsAreWholeCalendarDays() {
+        let month = StatsPeriod.month.interval(now: now, calendar: cal)!
+        #expect(month.end == now)
+        #expect(month.start == Self.date(day: 2, hour: 0))  // Oct 2 … Oct 31 is 30 days
+        let previous = StatsPeriod.month.previousInterval(now: now, calendar: cal)!
+        #expect(previous.end == month.start)
+        #expect(previous.start == Self.date(day: 2, hour: 0, month: 9))
+        #expect(StatsPeriod.all.interval(now: now, calendar: cal) == nil)
+        // A headache every day of the window counts 30 days, never 31.
+        let daily = (1...31).map { Self.a(day: $0, hour: 1, hours: 2) }
+        #expect(StatsEngine.headacheDays(daily, now: now, calendar: cal, within: month).count == 30)
     }
 
     @Test func durationText() {

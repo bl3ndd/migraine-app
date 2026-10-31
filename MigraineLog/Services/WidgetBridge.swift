@@ -38,8 +38,8 @@ enum WidgetBridge {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
-    /// `simplymigraine://log`: open the app straight on the log form.
+    /// `migrainelog://log`: open the app straight on the log form.
     nonisolated static func isLogLink(_ url: URL) -> Bool {
-        url.scheme == "simplymigraine" && url.host == "log"
+        url.scheme == "migrainelog" && url.host == "log"
     }
 }

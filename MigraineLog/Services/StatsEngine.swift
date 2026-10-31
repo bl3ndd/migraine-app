@@ -15,16 +15,28 @@ nonisolated enum StatsPeriod: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// The last `days` days up to `now`; nil for All (no lower bound).
-    func interval(now: Date) -> DateInterval? {
-        guard let days else { return nil }
-        return DateInterval(start: now.addingTimeInterval(-Double(days) * 86_400), end: now)
+    /// Spelled out for sentences ("the previous 30 days").
+    var title: String {
+        switch self {
+        case .month: "30 days"
+        case .quarter: "90 days"
+        case .year: "year"
+        case .all: "all time"
+        }
     }
 
-    /// The same-length period right before `interval(now:)`, for "vs previous" deltas.
-    func previousInterval(now: Date) -> DateInterval? {
-        guard let current = interval(now: now) else { return nil }
-        return DateInterval(start: current.start.addingTimeInterval(-current.duration), end: current.start)
+    /// The last `days` calendar days including today, up to `now`; nil for All.
+    /// Whole days, so "30 days" never touches a 31st calendar day.
+    func interval(now: Date, calendar: Calendar = .current) -> DateInterval? {
+        guard let days else { return nil }
+        return StatsEngine.lastDays(days, now: now, calendar: calendar)
+    }
+
+    /// The same number of calendar days right before `interval(now:)`, for "vs previous" deltas.
+    func previousInterval(now: Date, calendar: Calendar = .current) -> DateInterval? {
+        guard let days, let current = interval(now: now, calendar: calendar),
+              let start = calendar.date(byAdding: .day, value: -days, to: current.start) else { return nil }
+        return DateInterval(start: start, end: current.start)
     }
 }
 
@@ -93,6 +105,12 @@ nonisolated enum StatsEngine {
     /// days a month (the lower medication-overuse threshold in ICHD-3). The app
     /// only points it out and suggests asking — it never advises dosing.
     static let medicationDaysNotice = 10
+
+    /// The last `days` calendar days including today, from midnight to `now`.
+    static func lastDays(_ days: Int, now: Date, calendar: Calendar) -> DateInterval {
+        let start = calendar.date(byAdding: .day, value: -(days - 1), to: calendar.startOfDay(for: now)) ?? now
+        return DateInterval(start: start, end: max(start, now))
+    }
 
     /// Attacks that overlap the interval at all.
     static func attacks(_ attacks: [AttackValue], in interval: DateInterval, now: Date) -> [AttackValue] {
@@ -230,7 +248,8 @@ nonisolated enum StatsEngine {
 
     /// Headache days in the current period minus the previous one.
     static func headacheDayChange(_ all: [AttackValue], period: StatsPeriod, now: Date, calendar: Calendar) -> Int? {
-        guard let current = period.interval(now: now), let previous = period.previousInterval(now: now) else { return nil }
+        guard let current = period.interval(now: now, calendar: calendar),
+              let previous = period.previousInterval(now: now, calendar: calendar) else { return nil }
         let before = attacks(all, in: previous, now: now)
         guard !before.isEmpty || all.contains(where: { $0.start < previous.start }) else { return nil }
         return headacheDays(attacks(all, in: current, now: now), now: now, calendar: calendar, within: current).count

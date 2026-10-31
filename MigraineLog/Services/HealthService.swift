@@ -189,6 +189,8 @@ enum HealthService {
             .filter { $0.source == .manual && $0.healthKitID == nil && $0.end != nil }
         var saved = 0
         for a in pending {
+            // Ending or editing an attack while this loop awaits may already have written it.
+            guard a.healthKitID == nil, a.end != nil else { continue }
             if let id = await save(a.value, meta: HealthMeta(a)) {
                 a.healthKitID = id
                 saved += 1

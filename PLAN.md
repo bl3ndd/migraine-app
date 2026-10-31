@@ -2,7 +2,7 @@
 
 ## Status
 
-2026-10-31: built in one session from the Simply BP codebase. Done: domain model, statistics, log form, Today, Calendar, Insights, paywall, settings, onboarding, Apple Health, backup, PDF report, widget, reminders, review prompt, Tide design and icon, 58 unit + 10 UI tests green on the iPhone 13, site, ASO metadata, screenshots and header. An independent code review ran; its findings are fixed (see git log).
+2026-10-31: built in one session from the Simply BP codebase. Done: domain model, statistics, log form, Today, Calendar, Insights, paywall, settings, onboarding, Apple Health, backup, PDF report, widget, reminders, review prompt, Tide design and icon, 61 unit + 9 UI tests green on the iPhone 13, site, ASO metadata, screenshots and header. An independent code review ran; its findings are fixed (see git log).
 
 ## What's left (owner)
 

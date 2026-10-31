@@ -11,8 +11,13 @@ struct HomeView: View {
     @State private var showingFirstPaywall = false
     @State private var showingReport = false
     @State private var confirmingEnd: Attack?
+    @State private var endingNow = false
+    @State private var savedNewAttack = false
+    @ScaledMetric private var heroScale: CGFloat = 1
 
-    private var ongoing: Attack? { attacks.first { $0.isOngoing } }
+    /// Every attack still going, oldest first. Normally one; a restored backup
+    /// or the Calendar's + can add another, and each must stay reachable to end.
+    private var ongoing: [Attack] { attacks.filter(\.isOngoing).reversed() }
 
     var body: some View {
         NavigationStack {
@@ -27,8 +32,8 @@ struct HomeView: View {
                         if attacks.isEmpty {
                             emptyCard
                         } else {
-                            if let ongoing {
-                                ongoingCard(ongoing, now: now)
+                            if !ongoing.isEmpty {
+                                ForEach(ongoing) { ongoingCard($0, now: now) }
                             } else {
                                 streakCard(values, now: now)
                             }
@@ -42,7 +47,7 @@ struct HomeView: View {
             .background(AppColors.bgApp)
             .navigationTitle("Migraine Log")
             .safeAreaInset(edge: .bottom) {
-                if ongoing == nil {
+                if ongoing.isEmpty {
                     Button {
                         showingLog = true
                     } label: {
@@ -52,8 +57,10 @@ struct HomeView: View {
                     .padding()
                 }
             }
-            .sheet(isPresented: $showingLog, onDismiss: offerProAfterFirstAttack) { LogAttackView() }
-            .sheet(item: $editing) { LogAttackView(editing: $0) }
+            .sheet(isPresented: $showingLog, onDismiss: offerProAfterFirstAttack) {
+                LogAttackView(onSavedNew: { savedNewAttack = true })
+            }
+            .sheet(item: $editing, onDismiss: { endingNow = false }) { LogAttackView(editing: $0, endingNow: endingNow) }
             .sheet(isPresented: $showingFirstPaywall) { PaywallView(source: "first_attack") }
             .sheet(isPresented: $showingReport) { ReportView() }
             .toolbar {
@@ -71,23 +78,30 @@ struct HomeView: View {
                     confirmingEnd = nil
                 }
                 Button("Pick the End Time") {
+                    endingNow = true
                     editing = confirmingEnd
                     confirmingEnd = nil
                 }
             }
             // Widget "log" link: on a cold launch the flag is already set when Home appears.
             .onAppear {
-                openPendingLog()
-                ReviewService.considerPrompt(headacheFreeDays: StatsEngine.headacheFreeDays(attacks.map(\.value), now: Date(), calendar: .current))
+                // Opened from the widget to log a headache: no rating prompt over the form.
+                if settings.pendingLog {
+                    openPendingLog()
+                } else {
+                    ReviewService.considerPrompt(headacheFreeDays: StatsEngine.headacheFreeDays(attacks.map(\.value), now: Date(), calendar: .current))
+                }
             }
             .onChange(of: settings.pendingLog) { openPendingLog() }
         }
     }
 
     /// Pro is offered once, after the first saved attack — by then the person has
-    /// seen what the app does. Never again unprompted; Cancel doesn't count.
+    /// seen what the app does. Never again unprompted; Cancel doesn't count, and
+    /// neither do headaches imported from Apple Health.
     private func offerProAfterFirstAttack() {
-        guard !settings.hasSeenIntroPaywall, !purchases.isPro, !attacks.isEmpty else { return }
+        guard savedNewAttack, !settings.hasSeenIntroPaywall, !purchases.isPro else { return }
+        savedNewAttack = false
         settings.hasSeenIntroPaywall = true
         showingFirstPaywall = true
     }
@@ -97,7 +111,7 @@ struct HomeView: View {
         settings.pendingLog = false
         showingReport = false
         // With an attack already going, the link opens it to update or end.
-        if let ongoing { editing = ongoing } else { showingLog = true }
+        if let first = ongoing.first { editing = first } else { showingLog = true }
     }
 
     // MARK: Cards
@@ -110,7 +124,7 @@ struct HomeView: View {
                         .font(.headline)
                         .foregroundStyle(AppColors.textSecondary)
                     Text(DurationText.format(now.timeIntervalSince(a.start)))
-                        .font(AppFont.hero(52))
+                        .font(AppFont.hero(52 * heroScale))
                         .foregroundStyle(AppColors.textPrimary)
                         .contentTransition(.numericText())
                     Text("since \(a.start.formatted(date: Calendar.current.isDateInToday(a.start) ? .omitted : .abbreviated, time: .shortened))")
@@ -129,7 +143,15 @@ struct HomeView: View {
             HStack(spacing: 10) {
                 Button("Update") { editing = a }
                     .buttonStyle(SecondaryButtonStyle())
-                Button("It's Over") { confirmingEnd = a }
+                Button("It's Over") {
+                    // Days later it's more likely forgotten than still going: ask when it ended.
+                    if AttackActions.isStale(a, now: now) {
+                        endingNow = true
+                        editing = a
+                    } else {
+                        confirmingEnd = a
+                    }
+                }
                     .buttonStyle(PrimaryButtonStyle())
             }
         }
@@ -149,7 +171,7 @@ struct HomeView: View {
                         .foregroundStyle(AppColors.textSecondary)
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text("\(days)")
-                            .font(AppFont.hero(84))
+                            .font(AppFont.hero(84 * heroScale))
                             .foregroundStyle(AppColors.textPrimary)
                         Text(days == 1 ? "day" : "days")
                             .font(.title3.weight(.semibold))
@@ -172,7 +194,7 @@ struct HomeView: View {
         let calendar = Calendar.current
         let month = calendar.dateInterval(of: .month, for: now) ?? DateInterval(start: now, duration: 0)
         let s = StatsEngine.summary(values, in: DateInterval(start: month.start, end: max(month.start, now)), now: now, calendar: calendar)
-        let last30 = StatsEngine.summary(values, in: DateInterval(start: now.addingTimeInterval(-30 * 86_400), end: now), now: now, calendar: calendar)
+        let last30 = StatsEngine.summary(values, in: StatsEngine.lastDays(30, now: now, calendar: calendar), now: now, calendar: calendar)
         return CardView {
             VStack(alignment: .leading, spacing: 14) {
                 Text(now.formatted(.dateTime.month(.wide)))

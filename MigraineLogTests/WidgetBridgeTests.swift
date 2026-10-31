@@ -37,8 +37,8 @@ struct WidgetBridgeTests {
     }
 
     @Test func logLink() {
-        #expect(WidgetBridge.isLogLink(URL(string: "simplymigraine://log")!))
-        #expect(!WidgetBridge.isLogLink(URL(string: "simplymigraine://other")!))
+        #expect(WidgetBridge.isLogLink(URL(string: "migrainelog://log")!))
+        #expect(!WidgetBridge.isLogLink(URL(string: "migrainelog://other")!))
         #expect(!WidgetBridge.isLogLink(URL(string: "https://log")!))
     }
 
