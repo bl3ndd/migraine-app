@@ -131,12 +131,15 @@ private struct StatsContent: View {
             VStack(alignment: .leading, spacing: 12) {
                 title("Headache days per month")
                 Chart(months, id: \.month) { m in
+                    // Side by side, not stacked: migraine days are part of headache days.
                     BarMark(x: .value("Month", m.month, unit: .month), y: .value("Days", m.headacheDays))
                         .foregroundStyle(AppColors.headache.opacity(0.55))
-                        .cornerRadius(6)
+                        .position(by: .value("Type", "All"))
+                        .cornerRadius(4)
                     BarMark(x: .value("Month", m.month, unit: .month), y: .value("Days", m.migraineDays))
                         .foregroundStyle(AppColors.migraine)
-                        .cornerRadius(6)
+                        .position(by: .value("Type", "Migraine"))
+                        .cornerRadius(4)
                 }
                 .chartXAxis { AxisMarks(values: .stride(by: .month, count: months.count > 6 ? 2 : 1)) { _ in AxisValueLabel(format: .dateTime.month(.abbreviated)) } }
                 .frame(height: 180)
