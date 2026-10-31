@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// Soft filled surface on the tinted background: no border, no shadow.
 struct CardView<Content: View>: View {
     let content: Content
 
@@ -7,69 +8,99 @@ struct CardView<Content: View>: View {
         self.content = content()
     }
 
-    /// White card on the paper background: hairline border, no shadow.
     var body: some View {
         content
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(18)
             .background(RoundedRectangle(cornerRadius: AppShape.cardRadius, style: .continuous).fill(AppColors.bgCard))
-            .overlay(RoundedRectangle(cornerRadius: AppShape.cardRadius, style: .continuous)
-                .strokeBorder(AppColors.separator, lineWidth: 1))
     }
 }
 
-struct CategoryBadge: View {
-    let category: BPCategory
+/// Uppercase label above a group of controls.
+struct SectionLabel: View {
+    let text: String
+
+    init(_ text: String) { self.text = text }
 
     var body: some View {
-        HStack(spacing: 6) {
-            Circle().fill(category.color).frame(width: 8, height: 8)
-            Text(category.title)
-        }
-        .font(.subheadline.weight(.semibold))
-        .foregroundStyle(category.color)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(Capsule().fill(category.color.opacity(0.13)))
+        Text(text.uppercased())
+            .font(.footnote.weight(.semibold))
+            .tracking(0.6)
+            .foregroundStyle(AppColors.textSecondary)
+            .padding(.leading, 4)
+            .accessibilityAddTraits(.isHeader)
     }
 }
 
-/// Where a reading sits on the six categories, Low to Crisis: the current one in
-/// full color with a marker, the rest faded. Backs the badge's color and name
-/// with a position, which also works for color-blind users.
-struct CategoryScale: View {
-    let category: BPCategory
-    var showsLabels = false
+/// Pain level as a number on its ramp color.
+struct IntensityBadge: View {
+    let intensity: Int
+    var size: CGFloat = 40
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .top, spacing: 5) {
-                ForEach(BPCategory.allCases, id: \.self) { c in
-                    VStack(spacing: 3) {
-                        Capsule()
-                            .fill(c.color.opacity(c == category ? 1 : 0.3))
-                            .frame(height: c == category ? 10 : 8)
-                        Image(systemName: "arrowtriangle.up.fill")
-                            .font(.system(size: 10))
-                            .foregroundStyle(c == category ? AppColors.textPrimary : .clear)
-                        if showsLabels {
-                            Text(c.shortTitle)
-                                .font(.caption2.weight(c == category ? .bold : .regular))
-                                .foregroundStyle(c == category ? AppColors.textPrimary : AppColors.textSecondary)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
+        Text("\(intensity)")
+            .font(.system(size: size * 0.46, weight: .semibold))
+            .foregroundStyle(PainRamp.text(intensity))
+            .frame(width: size, height: size)
+            .background(RoundedRectangle(cornerRadius: size * 0.28, style: .continuous).fill(PainRamp.fill(intensity)))
+            .accessibilityLabel("Pain \(intensity) of 10, \(IntensityLevel(intensity).title.lowercased())")
+    }
+}
+
+/// 1–10 as ten bars that grow taller with pain, filled up to the pick on the
+/// ramp. Big, one-handed targets; the number row and the band name keep it
+/// readable without color.
+struct IntensityPicker: View {
+    @Binding var value: Int
+
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Pain").font(.headline).foregroundStyle(AppColors.textSecondary)
+                Spacer()
+                Text("\(value) · \(IntensityLevel(value).title)")
+                    .font(.headline)
+                    .foregroundStyle(AppColors.accent)
+            }
+            HStack(alignment: .bottom, spacing: 6) {
+                ForEach(1...10, id: \.self) { n in
+                    let on = n <= value
+                    Button {
+                        value = n
+                    } label: {
+                        VStack(spacing: 6) {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(on ? PainRamp.fill(n) : AppColors.bgInput)
+                                .frame(height: 26 + CGFloat(n) * 4.5)
+                                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .strokeBorder(n == value ? AppColors.textPrimary : .clear, lineWidth: 2))
+                            Text("\(n)")
+                                .font(.subheadline.weight(n == value ? .bold : .regular))
+                                .foregroundStyle(n == value ? AppColors.bgCard : AppColors.textSecondary)
+                                .frame(width: 24, height: 24)
+                                .background(Circle().fill(n == value ? AppColors.textPrimary : .clear))
                         }
+                        .frame(maxWidth: .infinity, minHeight: 92, alignment: .bottom)
+                        .contentShape(Rectangle())
                     }
-                    .frame(maxWidth: .infinity)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Pain \(n)")
+                    .accessibilityAddTraits(n == value ? .isSelected : [])
                 }
             }
+            HStack {
+                Text("Mild")
+                Spacer()
+                Text("Worst imaginable")
+            }
+            .font(.caption)
+            .foregroundStyle(AppColors.textSecondary)
         }
-        .accessibilityElement()
-        .accessibilityLabel("\(category.title), \(BPCategory.allCases.firstIndex(of: category)! + 1) of \(BPCategory.allCases.count) on the blood pressure scale")
+        .sensoryFeedback(.selection, trigger: value)
     }
 }
 
-/// Segmented choice on a warm fill track, with 44pt segments. Selected segments
+/// Segmented choice on a fill track, with 44pt segments. Selected segments
 /// carry the accessibility "selected" trait, like the system control.
 struct SegmentedChips<Value: Hashable>: View {
     let options: [Value]
@@ -86,10 +117,12 @@ struct SegmentedChips<Value: Hashable>: View {
                     Text(title(option))
                         .font(.body.weight(on ? .semibold : .regular))
                         .foregroundStyle(on ? AppColors.textPrimary : AppColors.textSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity, minHeight: 40)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .background(RoundedRectangle(cornerRadius: AppShape.chipRadius, style: .continuous)
                             .fill(on ? AppColors.bgCard : .clear)
-                            .shadow(color: .black.opacity(on ? 0.08 : 0), radius: 2, y: 1))
+                            .shadow(color: .black.opacity(on ? 0.06 : 0), radius: 2, y: 1))
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -97,67 +130,59 @@ struct SegmentedChips<Value: Hashable>: View {
             }
         }
         .padding(4)
-        .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(AppColors.bgInput))
+        .background(RoundedRectangle(cornerRadius: AppShape.chipRadius + 3, style: .continuous).fill(AppColors.bgInput))
         .sensoryFeedback(.selection, trigger: selection)
     }
 }
 
-/// The category's plain-language line as a tinted callout with an icon, so it
-/// gets noticed rather than skimmed past. Shown where a single reading is shown.
-struct CategoryNote: View {
-    let category: BPCategory
+/// Multi-select chips that wrap onto as many lines as they need.
+struct ChipGroup<Item: Hashable>: View {
+    let items: [Item]
+    @Binding var selection: Set<Item>
+    let title: (Item) -> String
 
     var body: some View {
-        if let note = category.note {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "exclamationmark.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(category.color)
-                    .accessibilityHidden(true)
-                Text(note)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(AppColors.textPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
+        FlowLayout(spacing: 8) {
+            ForEach(items, id: \.self) { item in
+                let on = selection.contains(item)
+                Button {
+                    if on { selection.remove(item) } else { selection.insert(item) }
+                } label: {
+                    Text(title(item))
+                        .font(.body.weight(on ? .semibold : .regular))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .foregroundStyle(on ? .white : AppColors.textPrimary)
+                        .background(RoundedRectangle(cornerRadius: AppShape.chipRadius, style: .continuous)
+                            .fill(on ? AppColors.accentFill : AppColors.bgInput))
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(on ? .isSelected : [])
             }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 12).fill(category.color.opacity(0.14)))
-            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(category.color.opacity(0.4), lineWidth: 1))
         }
+        .sensoryFeedback(.selection, trigger: selection)
     }
 }
 
-/// "128/82 mmHg" with an optional pulse line, sized for reading at arm's length.
-struct ReadingNumbers: View {
-    let systolic: Int
-    let diastolic: Int
-    var pulse: Int?
-    var size: CGFloat = 52
-    @ScaledMetric private var scale: CGFloat = 1
-
+/// Shown at the top pain levels. Points to care, never advises treatment.
+struct EmergencyNote: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("\(systolic)/\(diastolic)")
-                    .font(AppFont.number(size * scale))
-                    .foregroundStyle(AppColors.textPrimary)
-                    .minimumScaleFactor(0.6)
-                    .lineLimit(1)
-                Text("mmHg")
-                    .font(.headline)
-                    .foregroundStyle(AppColors.textSecondary)
-            }
-            if let pulse {
-                Label("\(pulse) bpm", systemImage: "heart.fill")
-                    .font(.headline)
-                    .foregroundStyle(AppColors.textSecondary)
-            }
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.title2)
+            Text("Call 911 if this is the worst headache of your life, came on suddenly like a thunderclap, or comes with weakness, numbness, confusion, trouble speaking, a stiff neck with fever, or after a head injury.")
+                .font(.body.weight(.semibold))
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .foregroundStyle(.white)
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: AppShape.cardRadius, style: .continuous).fill(AppColors.dangerFill))
         .accessibilityElement(children: .combine)
     }
 }
 
-/// Full-width 58pt capsule primary action, thumb-reachable at the bottom of the screen.
+/// Full-width 58pt primary action, thumb-reachable at the bottom of the screen.
 struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         PrimaryButtonBody(configuration: configuration)
@@ -173,11 +198,23 @@ struct PrimaryButtonStyle: ButtonStyle {
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity, minHeight: 58)
                 .background(
-                    Capsule()
-                        .fill(isEnabled ? AppColors.accentFill : AppColors.pulse.opacity(0.5))
+                    RoundedRectangle(cornerRadius: AppShape.buttonRadius, style: .continuous)
+                        .fill(isEnabled ? AppColors.accentFill : AppColors.textSecondary.opacity(0.45))
                         .opacity(configuration.isPressed ? 0.8 : 1)
                 )
         }
+    }
+}
+
+/// Tinted secondary action, same height as the primary.
+struct SecondaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.title3.weight(.semibold))
+            .foregroundStyle(AppColors.accent)
+            .frame(maxWidth: .infinity, minHeight: 58)
+            .background(RoundedRectangle(cornerRadius: AppShape.buttonRadius, style: .continuous)
+                .fill(AppColors.accentTint).opacity(configuration.isPressed ? 0.7 : 1))
     }
 }
 

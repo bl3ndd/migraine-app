@@ -8,39 +8,43 @@ struct WidgetBridgeTests {
         c.timeZone = TimeZone(identifier: "UTC")!
         return c
     }()
-    let now = Date(timeIntervalSince1970: 1_800_000_000)
+    /// 2027-01-15 08:00 UTC.
+    var now: Date { calendar.date(from: DateComponents(year: 2027, month: 1, day: 15, hour: 8))! }
 
-    private func r(_ sys: Int, _ dia: Int, daysAgo: Double, hours: Double = 0) -> ReadingValue {
-        ReadingValue(date: now.addingTimeInterval(-(daysAgo * 86_400 + hours * 3600)), systolic: sys, diastolic: dia, pulse: 70)
+    private func a(daysAgo: Double, hours: Double? = 3) -> AttackValue {
+        let start = now.addingTimeInterval(-daysAgo * 86_400)
+        return AttackValue(start: start, end: hours.map { start.addingTimeInterval($0 * 3600) }, intensity: 6)
     }
 
-    @Test func emptyHasNoSnapshot() {
-        #expect(WidgetBridge.snapshot([], now: now, calendar: calendar) == nil)
+    @Test func emptyDiary() {
+        let s = WidgetBridge.snapshot([], now: now, calendar: calendar)
+        #expect(s.ongoingSince == nil && s.lastEnd == nil && s.monthHeadacheDays == 0)
+        #expect(s.monthStart == calendar.date(from: DateComponents(year: 2027, month: 1, day: 1)))
     }
 
-    @Test func latestReadingAndItsCategory() throws {
-        let s = try #require(WidgetBridge.snapshot([r(118, 76, daysAgo: 2), r(135, 85, daysAgo: 0, hours: 1)], now: now, calendar: calendar))
-        #expect(s.systolic == 135 && s.diastolic == 85 && s.pulse == 70)
-        #expect(s.categoryRaw == BPCategory.stage1.rawValue)
-        #expect(s.categoryTitle == "High · Stage 1")
+    @Test func lastEndAndMonthDays() {
+        let attacks = [a(daysAgo: 2), a(daysAgo: 5), a(daysAgo: 20)]  // the last one is in December
+        let s = WidgetBridge.snapshot(attacks, now: now, calendar: calendar)
+        #expect(s.lastEnd == attacks[0].end)
+        #expect(s.ongoingSince == nil)
+        #expect(s.monthHeadacheDays == 2)
     }
 
-    @Test func weekAverageCountsEachDayOnceAndIgnoresOlderReadings() throws {
-        let readings = (0..<4).map { r(150, 95, daysAgo: 1, hours: Double($0)) }  // one busy day
-            + [r(110, 75, daysAgo: 2), r(200, 110, daysAgo: 10)]  // a quiet day, and one outside the week
-        let s = try #require(WidgetBridge.snapshot(readings, now: now, calendar: calendar))
-        #expect(s.weekSystolic == 130)
-        #expect(s.weekDiastolic == 85)
+    @Test func ongoingAttack() {
+        let ongoing = a(daysAgo: 0.1, hours: nil)
+        let s = WidgetBridge.snapshot([ongoing, a(daysAgo: 4)], now: now, calendar: calendar)
+        #expect(s.ongoingSince == ongoing.start)
+    }
+
+    @Test func logLink() {
+        #expect(WidgetBridge.isLogLink(URL(string: "simplymigraine://log")!))
+        #expect(!WidgetBridge.isLogLink(URL(string: "simplymigraine://other")!))
+        #expect(!WidgetBridge.isLogLink(URL(string: "https://log")!))
     }
 
     @Test func snapshotSurvivesJSON() throws {
-        let s = try #require(WidgetBridge.snapshot([r(120, 80, daysAgo: 0)], now: now, calendar: calendar))
-        #expect(try JSONDecoder().decode(WidgetSnapshot.self, from: JSONEncoder().encode(s)) == s)
-    }
-
-    @Test func addLink() {
-        #expect(WidgetBridge.isAddLink(URL(string: "simplymigraine://add")!))
-        #expect(!WidgetBridge.isAddLink(URL(string: "simplymigraine://home")!))
-        #expect(!WidgetBridge.isAddLink(URL(string: "https://add")!))
+        let s = WidgetBridge.snapshot([a(daysAgo: 1)], now: now, calendar: calendar)
+        let back = try JSONDecoder().decode(WidgetSnapshot.self, from: JSONEncoder().encode(s))
+        #expect(back == s)
     }
 }

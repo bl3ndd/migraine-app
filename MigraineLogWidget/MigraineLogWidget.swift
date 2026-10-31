@@ -1,44 +1,50 @@
 import WidgetKit
 import SwiftUI
 
-struct ReadingEntry: TimelineEntry {
+struct DiaryEntry: TimelineEntry {
     let date: Date
     let snapshot: WidgetSnapshot?
 }
 
-/// The app reloads timelines whenever readings change, so one entry and no refresh schedule.
+/// The app reloads timelines whenever the diary changes. Between those, one
+/// entry per midnight keeps "days headache-free" counting up on its own.
 struct Provider: TimelineProvider {
-    func placeholder(in context: Context) -> ReadingEntry {
-        ReadingEntry(date: Date(), snapshot: .sample)
+    func placeholder(in context: Context) -> DiaryEntry {
+        DiaryEntry(date: Date(), snapshot: .sample)
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (ReadingEntry) -> Void) {
-        completion(ReadingEntry(date: Date(), snapshot: context.isPreview ? (WidgetSnapshot.load() ?? .sample) : WidgetSnapshot.load()))
+    func getSnapshot(in context: Context, completion: @escaping (DiaryEntry) -> Void) {
+        completion(DiaryEntry(date: Date(), snapshot: context.isPreview ? (WidgetSnapshot.load() ?? .sample) : WidgetSnapshot.load()))
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<ReadingEntry>) -> Void) {
-        completion(Timeline(entries: [ReadingEntry(date: Date(), snapshot: WidgetSnapshot.load())], policy: .never))
+    func getTimeline(in context: Context, completion: @escaping (Timeline<DiaryEntry>) -> Void) {
+        let snapshot = WidgetSnapshot.load()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let midnights = (1...7).compactMap { calendar.date(byAdding: .day, value: $0, to: today) }
+        let entries = [DiaryEntry(date: Date(), snapshot: snapshot)] + midnights.map { DiaryEntry(date: $0, snapshot: snapshot) }
+        completion(Timeline(entries: entries, policy: .atEnd))
     }
 }
 
-/// Latest reading at a glance; any tap opens the Add Reading form.
+/// Days headache-free (or the attack in progress) at a glance; any tap opens the log form.
 struct MigraineLogWidget: Widget {
     let kind = "MigraineLogWidget"
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: Provider()) { entry in
             WidgetView(entry: entry)
-                .widgetURL(WidgetSnapshot.addURL)
+                .widgetURL(WidgetSnapshot.logURL)
                 .containerBackground(.background, for: .widget)
         }
-        .configurationDisplayName("Blood Pressure")
-        .description("Your latest reading. Tap to add a new one.")
+        .configurationDisplayName("Migraine Log")
+        .description("Days headache-free and this month's headache days. Tap to log a headache.")
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryCircular])
     }
 }
 
 struct WidgetView: View {
-    let entry: ReadingEntry
+    let entry: DiaryEntry
     @Environment(\.widgetFamily) private var family
 
     var body: some View {
@@ -56,11 +62,7 @@ struct WidgetView: View {
         VStack(alignment: .leading, spacing: 4) {
             header
             Spacer(minLength: 0)
-            if let s = entry.snapshot {
-                latest(s)
-            } else {
-                empty
-            }
+            status
         }
     }
 
@@ -69,21 +71,24 @@ struct WidgetView: View {
             VStack(alignment: .leading, spacing: 4) {
                 header
                 Spacer(minLength: 0)
-                if let s = entry.snapshot { latest(s) } else { empty }
+                status
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .leading, spacing: 6) {
-                if let s = entry.snapshot, let sys = s.weekSystolic, let dia = s.weekDiastolic {
-                    Text("7-day average").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    Text("\(sys)/\(dia)").font(.system(size: 26, weight: .bold, design: .rounded))
+                if let s = entry.snapshot {
+                    Text("This month").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text("\(s.monthDays(on: entry.date))").font(.system(size: 30, weight: .light)).privacySensitive()
+                        Text("headache days").font(.caption).foregroundStyle(.secondary)
+                    }
                 }
                 Spacer(minLength: 0)
-                Label("Add Reading", systemImage: "plus")
+                Label(entry.snapshot?.ongoingSince == nil ? "Log Headache" : "Update", systemImage: "plus")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(Capsule().fill(Color.brand))
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(light: 0x146B66, dark: 0x13756F)))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -91,8 +96,8 @@ struct WidgetView: View {
 
     private var header: some View {
         HStack(spacing: 4) {
-            Image(systemName: "heart.fill")
-            Text("Simply BP")
+            Image(systemName: "water.waves")
+            Text("Migraine Log")
             Spacer(minLength: 0)
             Image(systemName: "plus.circle.fill").font(.title3)
         }
@@ -100,28 +105,27 @@ struct WidgetView: View {
         .foregroundStyle(Color.brand)
     }
 
-    private func latest(_ s: WidgetSnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("\(s.systolic)/\(s.diastolic)")
-                .privacySensitive()
-                .font(.system(size: 34, weight: .bold, design: .rounded))
-                .minimumScaleFactor(0.6)
-                .lineLimit(1)
-            Text(s.categoryTitle)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(s.categoryColor)
-                .lineLimit(1)
-            Text(s.date, style: .relative)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        }
-    }
-
-    private var empty: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("No readings yet").font(.headline)
-            Text("Tap to add your first one").font(.caption).foregroundStyle(.secondary)
+    @ViewBuilder
+    private var status: some View {
+        if let s = entry.snapshot, let since = s.ongoingSince {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Headache since").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                Text(since, style: .time).font(.system(size: 28, weight: .light)).privacySensitive()
+                Text(since, style: .relative).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+            }
+        } else if let s = entry.snapshot, let days = s.headacheFreeDays(on: entry.date) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("\(days)").font(.system(size: 44, weight: .ultraLight)).privacySensitive()
+                Text(days == 1 ? "day headache-free" : "days headache-free")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Nothing logged yet").font(.headline)
+                Text("Tap to log a headache").font(.caption).foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -129,12 +133,15 @@ struct WidgetView: View {
 
     private var rectangular: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Label("Blood pressure", systemImage: "heart.fill").font(.caption2.weight(.semibold))
-            if let s = entry.snapshot {
-                Text("\(s.systolic)/\(s.diastolic)").font(.system(size: 22, weight: .bold, design: .rounded)).privacySensitive()
-                Text(s.categoryTitle).font(.caption2)
+            Label("Migraine Log", systemImage: "water.waves").font(.caption2.weight(.semibold))
+            if let s = entry.snapshot, let since = s.ongoingSince {
+                Text("Headache since").font(.caption2)
+                Text(since, style: .time).font(.system(size: 20, weight: .semibold)).privacySensitive()
+            } else if let days = entry.snapshot?.headacheFreeDays(on: entry.date) {
+                Text("\(days) \(days == 1 ? "day" : "days")").font(.system(size: 22, weight: .semibold)).privacySensitive()
+                Text("headache-free").font(.caption2)
             } else {
-                Text("Tap to add a reading").font(.caption)
+                Text("Tap to log a headache").font(.caption)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -143,11 +150,12 @@ struct WidgetView: View {
     private var circular: some View {
         ZStack {
             AccessoryWidgetBackground()
-            if let s = entry.snapshot {
+            if entry.snapshot?.ongoingSince != nil {
+                Image(systemName: "waveform.path.ecg").font(.title3.weight(.semibold))
+            } else if let days = entry.snapshot?.headacheFreeDays(on: entry.date) {
                 VStack(spacing: -2) {
-                    Text("\(s.systolic)").font(.system(size: 17, weight: .bold, design: .rounded)).privacySensitive()
-                    Rectangle().frame(width: 22, height: 1.5)
-                    Text("\(s.diastolic)").font(.system(size: 15, weight: .semibold, design: .rounded)).privacySensitive()
+                    Text("\(days)").font(.system(size: 20, weight: .semibold)).privacySensitive()
+                    Text("days").font(.system(size: 9, weight: .medium))
                 }
             } else {
                 Image(systemName: "plus").font(.title2.weight(.bold))

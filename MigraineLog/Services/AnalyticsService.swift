@@ -4,7 +4,7 @@ import TelemetryDeck
 /// Feature-usage counting only, via TelemetryDeck (anonymized, no user IDs).
 /// Every signal is an event name plus at most a flag-like parameter
 /// ("from": "charts"). NOTHING health-related ever goes through here: no
-/// readings, categories, pulse, tags, notes or Health data — guidelines
+/// attacks, pain levels, symptoms, triggers, medicines, notes or Health data — guidelines
 /// 5.1.2(vi) and 5.1.3(i) forbid sharing it with third parties. Keep it that way.
 ///
 /// Sends nothing while the user has "Share anonymous usage stats" off, during
@@ -19,10 +19,11 @@ enum Analytics {
         case onboardingStep = "onboarding.step"
         /// `health`, `reminders` = "on" | "off".
         case onboardingCompleted = "onboarding.completed"
-        case readingAdded = "reading.added"
-        case readingEdited = "reading.edited"
-        case readingDeleted = "reading.deleted"
-        /// `from` = first_reading | charts | stats | report.
+        case attackAdded = "attack.added"
+        case attackEdited = "attack.edited"
+        case attackEnded = "attack.ended"
+        case attackDeleted = "attack.deleted"
+        /// `from` = first_attack | stats | report.
         case paywallShown = "paywall.shown"
         case proPurchased = "pro.purchased"
         case proRestored = "pro.restored"

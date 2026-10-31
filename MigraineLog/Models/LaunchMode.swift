@@ -2,10 +2,10 @@ import Foundation
 
 /// Launch arguments for UI tests and demos (Debug builds only; Release ignores them).
 /// `-UITEST`: in-memory store and throwaway settings, so tests never touch real
-/// readings and each run starts clean. `-SKIP_ONBOARDING`: start on Home.
-/// `-DEMO`: like `-UITEST`, plus two months of sample readings and no onboarding,
+/// attacks and each run starts clean. `-SKIP_ONBOARDING`: start on Home.
+/// `-DEMO`: like `-UITEST`, plus three months of sample attacks and no onboarding,
 /// for trying statistics and the purchase flow on a device. `-DEMO_LARGE`: the same
-/// with five years (~3,800 readings), for checking speed with a long history.
+/// with five years (~450 attacks), for checking speed with a long history.
 /// Pro state comes from `PurchaseService`'s `-FREE` / `-SNAPSHOT`.
 enum LaunchMode {
     #if DEBUG

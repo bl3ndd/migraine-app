@@ -4,7 +4,7 @@ import StoreKit
 /// One-time Pro unlock. Lists only what the build actually has — promising
 /// anything unshipped is a guideline 2.3.1 rejection.
 struct PaywallView: View {
-    /// Where the paywall was opened from, for the analytics funnel: first_reading | charts | stats | report.
+    /// Where the paywall was opened from, for the analytics funnel: first_attack | stats | report.
     var source: String
     @Environment(PurchaseService.self) private var purchases
     @Environment(\.dismiss) private var dismiss
@@ -22,7 +22,7 @@ struct PaywallView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                             .padding(.top, 8)
                             .accessibilityHidden(true)
-                        Text("Simply BP Pro")
+                        Text("Migraine Log Pro")
                             .font(.largeTitle.bold())
                             .foregroundStyle(AppColors.textPrimary)
                         Text("One price. Yours forever.")
@@ -32,9 +32,9 @@ struct PaywallView: View {
 
                     CardView {
                         VStack(alignment: .leading, spacing: 18) {
-                            benefit("doc.richtext", "Doctor-ready PDF report", "Averages, a chart and every reading, ready to print or email before your appointment.")
-                            benefit("chart.bar.xaxis", "Full statistics", "Morning vs. evening, trends, time in your target range, and more.")
-                            benefit("chart.xyaxis.line", "All-time charts", "See 90 days, a year, or your whole history.")
+                            benefit("doc.richtext", "Doctor-ready PDF report", "Headache days, medication days, triggers and every attack, ready to print or email before your appointment.")
+                            benefit("chart.bar.xaxis", "Your patterns", "Common triggers, when attacks start, and how your months compare.")
+                            benefit("pills.fill", "What works for you", "See how often each medicine actually helped.")
                         }
                     }
 
@@ -45,7 +45,7 @@ struct PaywallView: View {
 
                     VStack(spacing: 10) {
                         buyButton
-                        Text("One-time purchase. Logging, history, Apple Health and backups always stay free.")
+                        Text("One-time purchase. Logging, the calendar, Apple Health and backups always stay free.")
                             .font(.subheadline)
                             .foregroundStyle(AppColors.textSecondary)
                             .multilineTextAlignment(.center)
@@ -118,10 +118,10 @@ struct PaywallView: View {
     private func chip(_ text: String) -> some View {
         Label(text, systemImage: "checkmark.circle.fill")
             .font(.headline)
-            .foregroundStyle(AppColors.normal)
+            .foregroundStyle(AppColors.success)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .background(Capsule().fill(AppColors.normal.opacity(0.12)))
+            .background(Capsule().fill(AppColors.success.opacity(0.12)))
     }
 
     private func benefit(_ icon: String, _ title: String, _ text: String) -> some View {

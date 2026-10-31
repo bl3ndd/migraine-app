@@ -3,7 +3,7 @@ import Foundation
 @testable import MigraineLog
 
 struct StatsEngineTests {
-    /// Fixed UTC Gregorian calendar so hour/weekday buckets don't depend on the device.
+    /// Fixed UTC Gregorian calendar so day buckets don't depend on the device.
     static let calendar: Calendar = {
         var c = Calendar(identifier: .gregorian)
         c.timeZone = TimeZone(identifier: "UTC")!
@@ -11,167 +11,150 @@ struct StatsEngineTests {
     }()
 
     /// 2026-10-05 is a Monday.
-    static func date(day: Int, hour: Int = 9) -> Date {
-        calendar.date(from: DateComponents(year: 2026, month: 10, day: day, hour: hour))!
+    static func date(day: Int, hour: Int = 9, month: Int = 10) -> Date {
+        calendar.date(from: DateComponents(year: 2026, month: month, day: day, hour: hour))!
     }
 
-    static func r(_ sys: Int, _ dia: Int, _ pulse: Int? = nil, day: Int = 5, hour: Int = 9) -> ReadingValue {
-        ReadingValue(date: date(day: day, hour: hour), systolic: sys, diastolic: dia, pulse: pulse)
+    static func a(day: Int, hour: Int = 9, hours: Double? = 4, intensity: Int = 6, kind: AttackKind = .migraine, month: Int = 10,
+                  triggers: [Trigger] = [], symptoms: [Symptom] = [], meds: [MedicationDose] = []) -> AttackValue {
+        let start = date(day: day, hour: hour, month: month)
+        return AttackValue(start: start, end: hours.map { start.addingTimeInterval($0 * 3600) }, intensity: intensity, kind: kind,
+                           symptoms: symptoms, triggers: triggers, medications: meds)
     }
 
     let cal = StatsEngineTests.calendar
+    let now = StatsEngineTests.date(day: 31, hour: 12)
 
-    @Test func emptyInputGivesNoNumbers() {
-        #expect(StatsEngine.averages([]) == nil)
-        #expect(StatsEngine.extremes([]) == nil)
-        #expect(StatsEngine.pulsePressure([]) == nil)
-        #expect(StatsEngine.meanArterialPressure([]) == nil)
-        #expect(StatsEngine.timeInRange([], systolicBelow: 130, diastolicBelow: 80) == nil)
-        #expect(StatsEngine.trend([]) == nil)
-        #expect(StatsEngine.categoryDistribution([]).isEmpty)
-        #expect(StatsEngine.streak([], today: Self.date(day: 10), calendar: cal) == 0)
+    @Test func emptyHistory() {
+        let s = StatsEngine.summary([], in: nil, now: now, calendar: cal)
+        #expect(s == StatsEngine.Summary(attacks: 0, headacheDays: 0, migraineDays: 0, medicationDays: 0, averageIntensity: nil, averageDuration: nil))
+        #expect(StatsEngine.headacheFreeDays([], now: now, calendar: cal) == nil)
+        #expect(StatsEngine.triggerShares([]).isEmpty)
+        #expect(StatsEngine.medicationResults([]).isEmpty)
     }
 
-    @Test func averagesIgnoreMissingPulse() {
-        let a = StatsEngine.averages([Self.r(120, 80, 60), Self.r(140, 90, nil), Self.r(130, 70, 80)])!
-        #expect(a.systolic == 130)
-        #expect(a.diastolic == 80)
-        #expect(a.pulse == 70)
-        #expect(a.count == 3)
-        #expect(StatsEngine.averages([Self.r(120, 80)])!.pulse == nil)
+    @Test func dayCountsOnceWithSeveralAttacks() {
+        let attacks = [Self.a(day: 5, hour: 7), Self.a(day: 5, hour: 18, kind: .headache), Self.a(day: 9)]
+        #expect(StatsEngine.headacheDays(attacks, now: now, calendar: cal).count == 2)
     }
 
-    @Test func extremesBySystolic() {
-        let low = Self.r(110, 70, day: 6)
-        let high = Self.r(150, 95, day: 7)
-        let e = StatsEngine.extremes([Self.r(130, 80, day: 5), low, high])!
-        #expect(e.highest == high)
-        #expect(e.lowest == low)
+    @Test func attackPastMidnightCountsBothDays() {
+        let overnight = Self.a(day: 5, hour: 22, hours: 6)
+        #expect(StatsEngine.days(of: overnight, now: now, calendar: cal) == [cal.startOfDay(for: Self.date(day: 5)), cal.startOfDay(for: Self.date(day: 6))])
+        // Ending exactly at midnight doesn't touch the next day.
+        let toMidnight = Self.a(day: 5, hour: 22, hours: 2)
+        #expect(StatsEngine.days(of: toMidnight, now: now, calendar: cal).count == 1)
     }
 
-    @Test func pulsePressureAndMAP() {
-        let readings = [Self.r(120, 80), Self.r(150, 90)]
-        #expect(StatsEngine.pulsePressure(readings) == 50)  // (40 + 60) / 2
-        // MAP: 80 + 40/3 = 93.33…, 90 + 60/3 = 110 → 101.66…
-        #expect(abs(StatsEngine.meanArterialPressure(readings)! - 101.6667) < 0.001)
+    @Test func ongoingAttackCoversUntilNow() {
+        let ongoing = Self.a(day: 29, hour: 20, hours: nil)
+        #expect(StatsEngine.days(of: ongoing, now: now, calendar: cal).count == 3)  // 29, 30, 31
+        #expect(StatsEngine.headacheFreeDays([ongoing, Self.a(day: 2)], now: now, calendar: cal) == 0)
     }
 
-    @Test func categoryDistributionCounts() {
-        let d = StatsEngine.categoryDistribution([Self.r(115, 75), Self.r(118, 70), Self.r(135, 85), Self.r(185, 100)])
-        #expect(d[.normal] == 2)
-        #expect(d[.stage1] == 1)
-        #expect(d[.crisis] == 1)
-        #expect(d[.stage2] == nil)
+    @Test func daysClipToTheInterval() {
+        let monthStart = Self.date(day: 1, hour: 0)
+        let october = DateInterval(start: monthStart, end: Self.date(day: 1, hour: 0, month: 11))
+        // Sept 30 22:00 → Oct 1 04:00 counts one October day.
+        let crossing = AttackValue(start: monthStart.addingTimeInterval(-2 * 3600), end: monthStart.addingTimeInterval(4 * 3600), intensity: 5)
+        #expect(StatsEngine.days(of: crossing, now: now, calendar: cal, within: october).count == 1)
+        #expect(StatsEngine.attacks([crossing], in: october, now: now).count == 1)
     }
 
-    @Test func timeInRangeNeedsBothBelowTarget() {
-        let readings = [Self.r(125, 75), Self.r(129, 79), Self.r(130, 70), Self.r(120, 80)]
-        #expect(StatsEngine.timeInRange(readings, systolicBelow: 130, diastolicBelow: 80) == 0.5)
+    @Test func summaryNumbers() {
+        let meds = [MedicationDose(name: "Ibuprofen", takenAt: Self.date(day: 5, hour: 10))]
+        let attacks = [Self.a(day: 5, hours: 2, intensity: 4, kind: .headache, meds: meds),
+                       Self.a(day: 12, hours: 6, intensity: 8),
+                       Self.a(day: 30, hours: nil, intensity: 6)]
+        let s = StatsEngine.summary(attacks, in: nil, now: now, calendar: cal)
+        #expect(s.attacks == 3)
+        #expect(s.headacheDays == 4)  // 5, 12, 30, 31
+        #expect(s.migraineDays == 3)
+        #expect(s.medicationDays == 1)
+        #expect(s.averageIntensity == 6)
+        #expect(abs(s.averageDuration! - 4 * 3600) < 0.01)  // ongoing doesn't count
     }
 
-    @Test func morningVsEveningBoundaries() {
-        let readings = [
-            Self.r(120, 80, hour: 7), Self.r(130, 84, hour: 11),  // morning
-            Self.r(200, 100, hour: 12), Self.r(200, 100, hour: 17),  // afternoon, ignored
-            Self.r(140, 90, hour: 18), Self.r(150, 96, hour: 23),  // evening
-        ]
-        let split = StatsEngine.morningVsEvening(readings, calendar: cal)
-        #expect(split.morning?.systolic == 125)
-        #expect(split.morning?.count == 2)
-        #expect(split.evening?.systolic == 145)
-        #expect(split.evening?.diastolic == 93)
-        #expect(StatsEngine.morningVsEvening([Self.r(120, 80, hour: 7)], calendar: cal).evening == nil)
+    @Test func medicationDaysCountDistinctDays() {
+        let meds = [MedicationDose(name: "A", takenAt: Self.date(day: 5, hour: 9)),
+                    MedicationDose(name: "B", takenAt: Self.date(day: 5, hour: 15)),
+                    MedicationDose(name: "A", takenAt: Self.date(day: 6, hour: 1))]
+        #expect(StatsEngine.medicationDays([Self.a(day: 5, hours: 20, meds: meds)], calendar: cal).count == 2)
     }
 
-    @Test func weekdayAndHourBuckets() {
-        let readings = [Self.r(120, 80, day: 5, hour: 8), Self.r(140, 90, day: 12, hour: 8), Self.r(130, 85, day: 6, hour: 20)]
-        let weekdays = StatsEngine.weekdayAverages(readings, calendar: cal)
-        #expect(weekdays[2]?.systolic == 130)  // two Mondays
-        #expect(weekdays[3]?.count == 1)  // Tuesday
-        let hours = StatsEngine.hourlyAverages(readings, calendar: cal)
-        #expect(hours[8]?.count == 2)
-        #expect(hours[20]?.systolic == 130)
+    @Test func monthlyIncludesEmptyMonthsOldestFirst() {
+        let attacks = [Self.a(day: 3, month: 8), Self.a(day: 4, kind: .headache, month: 8), Self.a(day: 20)]
+        let months = StatsEngine.monthly(attacks, months: 4, now: now, calendar: cal)
+        #expect(months.map(\.headacheDays) == [0, 2, 0, 1])
+        #expect(months.map(\.migraineDays) == [0, 1, 0, 1])
+        #expect(months.last?.month == Self.date(day: 1, hour: 0))
     }
 
-    @Test func trendSign() {
-        // +1 mmHg SYS and +0.5 DIA per day over 10 days → +7 / +3.5 per week.
-        let rising = (0..<10).map { Self.r(120 + $0, 80 + $0 / 2 * 1, day: 5 + $0) }
-        let t = StatsEngine.trend(rising)!
-        #expect(abs(t.systolicPerWeek - 7) < 0.0001)
-        #expect(t.diastolicPerWeek > 0)
-        let falling = (0..<10).map { Self.r(150 - 2 * $0, 95, day: 5 + $0) }
-        let f = StatsEngine.trend(falling)!
-        #expect(abs(f.systolicPerWeek + 14) < 0.0001)
-        #expect(f.diastolicPerWeek == 0)
+    @Test func dayPeaksKeepTheWorst() {
+        let october = DateInterval(start: Self.date(day: 1, hour: 0), end: Self.date(day: 1, hour: 0, month: 11))
+        let peaks = StatsEngine.dayPeaks([Self.a(day: 5, intensity: 3), Self.a(day: 5, hour: 18, intensity: 8)], now: now, calendar: cal, within: october)
+        #expect(peaks == [cal.startOfDay(for: Self.date(day: 5)): 8])
     }
 
-    @Test func trendNeedsEnoughData() {
-        let fourReadings = (0..<4).map { Self.r(120 + $0, 80, day: 5 + $0 * 3) }
-        #expect(StatsEngine.trend(fourReadings) == nil)
-        let shortSpan = (0..<6).map { Self.r(120 + $0, 80, day: 5 + $0) }  // 5 days
-        #expect(StatsEngine.trend(shortSpan) == nil)
+    @Test func triggerSharesSortedByCountThenOrderSeen() {
+        let attacks = [Self.a(day: 1, triggers: [.stress, .poorSleep]), Self.a(day: 2, triggers: [.poorSleep]),
+                       Self.a(day: 3, triggers: [.weather]), Self.a(day: 4)]
+        let shares = StatsEngine.triggerShares(attacks)
+        #expect(shares.map(\.item) == [.poorSleep, .stress, .weather])
+        #expect(shares[0].count == 2)
+        #expect(shares[0].share == 0.5)
     }
 
-    @Test func periodComparison() {
-        let delta = StatsEngine.periodComparison(current: [Self.r(130, 85)], previous: [Self.r(140, 80), Self.r(120, 80)])
-        #expect(delta == StatsEngine.Delta(systolic: 0, diastolic: 5))
-        #expect(StatsEngine.periodComparison(current: [Self.r(130, 85)], previous: []) == nil)
+    @Test func medicationResultsGroupByNameIgnoringCase() {
+        let t = Self.date(day: 1)
+        let attacks = [Self.a(day: 1, meds: [MedicationDose(name: "Sumatriptan", takenAt: t, effect: .helped)]),
+                       Self.a(day: 2, meds: [MedicationDose(name: "sumatriptan ", takenAt: t, effect: .none)]),
+                       Self.a(day: 3, meds: [MedicationDose(name: "Sumatriptan", takenAt: t, effect: .unknown),
+                                              MedicationDose(name: "Ibuprofen", takenAt: t, effect: .partly)])]
+        let results = StatsEngine.medicationResults(attacks)
+        #expect(results.map(\.name) == ["Sumatriptan", "Ibuprofen"])
+        #expect(results[0].doses == 3)
+        #expect(results[0].rated == 2)
+        #expect(results[0].helpedShare == 0.5)
+        #expect(results[1].helpedShare == 1)
     }
 
-    @Test func streakCountsBackFromTodayOrYesterday() {
-        let readings = [Self.r(120, 80, day: 10), Self.r(120, 80, day: 9), Self.r(125, 80, day: 9, hour: 20), Self.r(120, 80, day: 8), Self.r(120, 80, day: 6)]
-        #expect(StatsEngine.streak(readings, today: Self.date(day: 10, hour: 22), calendar: cal) == 3)
-        #expect(StatsEngine.streak(readings, today: Self.date(day: 11), calendar: cal) == 3)  // nothing yet today
-        #expect(StatsEngine.streak(readings, today: Self.date(day: 12), calendar: cal) == 0)  // missed yesterday
+    @Test func partOfDayAndWeekday() {
+        let attacks = [Self.a(day: 5, hour: 2), Self.a(day: 5, hour: 7), Self.a(day: 6, hour: 11), Self.a(day: 12, hour: 19)]
+        let parts = StatsEngine.partOfDayCounts(attacks, calendar: cal)
+        #expect(parts[.night] == 1 && parts[.morning] == 2 && parts[.evening] == 1 && parts[.afternoon] == nil)
+        let weekdays = StatsEngine.weekdayCounts(attacks, calendar: cal)
+        #expect(weekdays[2] == 3)  // Mondays
+        #expect(weekdays[3] == 1)
     }
 
-    @Test func dailyAveragesOldestFirst() {
-        let days = StatsEngine.dailyAverages([Self.r(140, 90, day: 7), Self.r(120, 80, day: 5), Self.r(130, 70, day: 5, hour: 21)], calendar: cal)
-        #expect(days.count == 2)
-        #expect(days[0].day == Self.calendar.startOfDay(for: Self.date(day: 5)))
-        #expect(days[0].averages.systolic == 125)
-        #expect(days[1].averages.systolic == 140)
+    @Test func headacheFreeDaysCountFromLastEnd() {
+        #expect(StatsEngine.headacheFreeDays([Self.a(day: 27, hours: 3), Self.a(day: 10)], now: now, calendar: cal) == 4)
+        #expect(StatsEngine.headacheFreeDays([Self.a(day: 31, hour: 6, hours: 2)], now: now, calendar: cal) == 0)
     }
 
-    @Test func dailyGivesEachDayOneVote() {
-        // Five high readings on one day, one normal reading on another.
-        let busy = (0..<5).map { Self.r(150, 95, 80, day: 5, hour: 7 + $0) }
-        let quiet = [Self.r(110, 70, 60, day: 6)]
-        let days = StatsEngine.daily(busy + quiet, calendar: cal)
-        #expect(days.count == 2)
-        #expect(days[0] == ReadingValue(date: Self.calendar.startOfDay(for: Self.date(day: 5)), systolic: 150, diastolic: 95, pulse: 80))
-        #expect(StatsEngine.averages(days)!.systolic == 130)  // raw average would be 143.3
-        #expect(StatsEngine.categoryDistribution(days) == [.stage2: 1, .normal: 1])
+    @Test func headacheDayChangeVsPreviousPeriod() {
+        // Last 30 days: 2 headache days; the 30 before: 3.
+        let attacks = [Self.a(day: 20), Self.a(day: 25), Self.a(day: 10, month: 9), Self.a(day: 12, month: 9), Self.a(day: 15, month: 9)]
+        #expect(StatsEngine.headacheDayChange(attacks, period: .month, now: now, calendar: cal) == -1)
+        // Nothing logged before the period: no comparison.
+        #expect(StatsEngine.headacheDayChange([Self.a(day: 20)], period: .month, now: now, calendar: cal) == nil)
+        #expect(StatsEngine.headacheDayChange(attacks, period: .all, now: now, calendar: cal) == nil)
     }
 
-    @Test func dailyRoundsHalfUp() {
-        let days = StatsEngine.daily([Self.r(121, 80, day: 5), Self.r(122, 81, day: 5, hour: 20)], calendar: cal)
-        #expect(days.first?.systolic == 122)  // 121.5
-        #expect(days.first?.diastolic == 81)  // 80.5
-        #expect(days.first?.pulse == nil)
+    @Test func periodIntervals() {
+        let week = StatsPeriod.month.interval(now: now)!
+        #expect(week.end == now)
+        #expect(week.duration == 30 * 86_400)
+        #expect(StatsPeriod.month.previousInterval(now: now)!.end == week.start)
+        #expect(StatsPeriod.all.interval(now: now) == nil)
     }
 
-    @Test func weeklyAndMonthlyAverages() {
-        // Mon Oct 5 and Thu Oct 8 share a week; Mon Oct 12 starts the next one.
-        let readings = [Self.r(120, 80, day: 5), Self.r(140, 90, day: 8), Self.r(110, 70, day: 12)]
-        let weeks = StatsEngine.periodAverages(readings, by: .weekOfYear, calendar: cal)
-        #expect(weeks.count == 2)
-        #expect(weeks[0].averages.systolic == 130)
-        let months = StatsEngine.periodAverages(readings, by: .month, calendar: cal)
-        #expect(months.count == 1)
-        #expect(months[0].day == cal.dateInterval(of: .month, for: Self.date(day: 5))!.start)
-    }
-
-    @Test func chartBucketBySpan() {
-        #expect(StatsEngine.ChartBucket.forSpan(days: 30) == .day)
-        #expect(StatsEngine.ChartBucket.forSpan(days: 120) == .day)
-        #expect(StatsEngine.ChartBucket.forSpan(days: 365) == .week)
-        #expect(StatsEngine.ChartBucket.forSpan(days: 5 * 365) == .month)
-    }
-
-    @Test func intervalFilter() {
-        let interval = DateInterval(start: Self.date(day: 6, hour: 0), end: Self.date(day: 8, hour: 0))
-        let inside = StatsEngine.readings([Self.r(120, 80, day: 5), Self.r(130, 80, day: 6), Self.r(140, 80, day: 7), Self.r(150, 80, day: 9)], in: interval)
-        #expect(inside.map(\.systolic) == [130, 140])
+    @Test func durationText() {
+        #expect(DurationText.format(45 * 60) == "45 min")
+        #expect(DurationText.format(3 * 3600) == "3 h")
+        #expect(DurationText.format(3 * 3600 + 20 * 60) == "3 h 20 min")
+        #expect(DurationText.format(52 * 3600) == "2 d 4 h")
+        #expect(DurationText.format(72 * 3600) == "3 d")
     }
 }

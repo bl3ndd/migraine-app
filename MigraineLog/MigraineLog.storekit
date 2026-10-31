@@ -10,13 +10,13 @@
       "internalID" : "6800000001",
       "localizations" : [
         {
-          "description" : "Doctor PDF report, full statistics and all-time charts",
-          "displayName" : "Simply BP Pro",
+          "description" : "Doctor PDF report, insights into triggers and medicine",
+          "displayName" : "Migraine Log Pro",
           "locale" : "en_US"
         }
       ],
       "productID" : "white.tea.MigraineLog.pro",
-      "referenceName" : "Simply BP Pro",
+      "referenceName" : "Migraine Log Pro",
       "type" : "NonConsumable"
     }
   ],

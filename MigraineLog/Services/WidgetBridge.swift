@@ -3,17 +3,16 @@ import WidgetKit
 
 /// What the widget shows, written by the app into the shared App Group.
 /// The widget target keeps an identical copy (MigraineLogWidget/WidgetSnapshot.swift):
-/// change both together.
+/// change both together. Dates rather than counts, so the widget can work out
+/// "days headache-free" itself as days pass without the app running.
 nonisolated struct WidgetSnapshot: Codable, Equatable, Sendable {
-    var systolic: Int
-    var diastolic: Int
-    var pulse: Int?
-    var date: Date
-    var categoryRaw: Int
-    var categoryTitle: String
-    /// Mean of daily averages over the last 7 days, like Home's card.
-    var weekSystolic: Int?
-    var weekDiastolic: Int?
+    /// Start of the attack in progress, if any.
+    var ongoingSince: Date?
+    /// End of the most recent finished attack.
+    var lastEnd: Date?
+    /// Headache days so far in the calendar month of `monthStart`.
+    var monthHeadacheDays: Int
+    var monthStart: Date
 }
 
 /// App side of the widget: publishes the snapshot and recognizes its links.
@@ -22,30 +21,25 @@ enum WidgetBridge {
     static let appGroup = "group.white.tea.MigraineLog"
     static let snapshotKey = "widgetSnapshot"
 
-    nonisolated static func snapshot(_ readings: [ReadingValue], now: Date, calendar: Calendar) -> WidgetSnapshot? {
-        guard let last = readings.max(by: { $0.date < $1.date }) else { return nil }
-        let since = calendar.date(byAdding: .day, value: -6, to: calendar.startOfDay(for: now)) ?? .distantPast
-        let week = StatsEngine.averages(StatsEngine.daily(readings.filter { $0.date >= since }, calendar: calendar))
-        return WidgetSnapshot(systolic: last.systolic, diastolic: last.diastolic, pulse: last.pulse, date: last.date,
-                              categoryRaw: last.category.rawValue, categoryTitle: last.category.title,
-                              weekSystolic: week.map { Int($0.systolic.rounded()) },
-                              weekDiastolic: week.map { Int($0.diastolic.rounded()) })
+    nonisolated static func snapshot(_ attacks: [AttackValue], now: Date, calendar: Calendar) -> WidgetSnapshot {
+        let month = calendar.dateInterval(of: .month, for: now) ?? DateInterval(start: now, duration: 0)
+        let inMonth = StatsEngine.attacks(attacks, in: month, now: now)
+        return WidgetSnapshot(ongoingSince: attacks.filter { $0.end == nil }.map(\.start).max(),
+                              lastEnd: attacks.compactMap(\.end).max(),
+                              monthHeadacheDays: StatsEngine.headacheDays(inMonth, now: now, calendar: calendar, within: month).count,
+                              monthStart: month.start)
     }
 
-    /// Writes the snapshot (or clears it when there are no readings) and asks widgets to redraw.
-    static func publish(_ readings: [ReadingValue]) {
-        guard !LaunchMode.isThrowaway, let defaults = UserDefaults(suiteName: appGroup) else { return }
-        if let snapshot = snapshot(readings, now: Date(), calendar: .current),
-           let data = try? JSONEncoder().encode(snapshot) {
-            defaults.set(data, forKey: snapshotKey)
-        } else {
-            defaults.removeObject(forKey: snapshotKey)
-        }
+    /// Writes the snapshot and asks widgets to redraw.
+    static func publish(_ attacks: [AttackValue]) {
+        guard !LaunchMode.isThrowaway, let defaults = UserDefaults(suiteName: appGroup),
+              let data = try? JSONEncoder().encode(snapshot(attacks, now: Date(), calendar: .current)) else { return }
+        defaults.set(data, forKey: snapshotKey)
         WidgetCenter.shared.reloadAllTimelines()
     }
 
-    /// `simplymigraine://add`: open the app straight on the Add Reading form.
-    nonisolated static func isAddLink(_ url: URL) -> Bool {
-        url.scheme == "simplymigraine" && url.host == "add"
+    /// `simplymigraine://log`: open the app straight on the log form.
+    nonisolated static func isLogLink(_ url: URL) -> Bool {
+        url.scheme == "simplymigraine" && url.host == "log"
     }
 }

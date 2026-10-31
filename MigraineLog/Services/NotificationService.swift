@@ -1,11 +1,10 @@
 import UserNotifications
 
-/// Daily reminders to take a reading. Morning and evening are the times home
-/// monitoring guidance asks for; the user picks the exact times.
+/// One daily evening check-in. A diary is only as good as its gaps: headaches
+/// that weren't logged are the ones that skew the monthly count.
 enum NotificationService {
-    nonisolated static let idPrefix = "reading-reminder-"
-    static let defaultMorning = 8 * 60
-    static let defaultEvening = 20 * 60
+    nonisolated static let idPrefix = "checkin-reminder-"
+    static let defaultEvening = 21 * 60
 
     static func requestPermission() async -> Bool {
         (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])) ?? false
@@ -24,10 +23,8 @@ enum NotificationService {
     nonisolated static func requests(minutes: [Int]) -> [UNNotificationRequest] {
         Set(minutes).sorted().map { m in
             let content = UNMutableNotificationContent()
-            content.title = "Simply BP"
-            content.body = m < 12 * 60
-                ? "Good morning! Time to check your blood pressure."
-                : "Evening check: time to take your blood pressure."
+            content.title = "Migraine Log"
+            content.body = "Any headache today? Log it while you remember, so your monthly count stays right."
             content.sound = .default
             let trigger = UNCalendarNotificationTrigger(dateMatching: DateComponents(hour: m / 60, minute: m % 60), repeats: true)
             return UNNotificationRequest(identifier: "\(idPrefix)\(m)", content: content, trigger: trigger)

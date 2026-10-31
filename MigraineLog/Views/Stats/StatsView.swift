@@ -6,9 +6,8 @@ import Charts
 /// prompt — what they'd get, without the numbers.
 struct StatsView: View {
     @Environment(PurchaseService.self) private var purchases
-    @Environment(AppSettings.self) private var settings
-    @Query(sort: \Reading.date) private var readings: [Reading]
-    @State private var range = ChartRange.month
+    @Query(sort: \Attack.start) private var attacks: [Attack]
+    @State private var period = StatsPeriod.quarter
     @State private var showingPaywall = false
     @State private var showingReport = false
 
@@ -18,15 +17,14 @@ struct StatsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    SegmentedChips(options: ChartRange.allCases, selection: $range) { $0.rawValue }
+                    SegmentedChips(options: StatsPeriod.allCases, selection: $period) { $0.rawValue }
 
-                    if readings.isEmpty {
-                        ContentUnavailableView("No readings yet", systemImage: "chart.bar.xaxis",
-                                               description: Text("Add a few readings and your statistics show up here."))
+                    if attacks.isEmpty {
+                        ContentUnavailableView("Nothing logged yet", systemImage: "chart.bar.xaxis",
+                                               description: Text("Log a few headaches and your patterns show up here."))
                     } else {
                         ZStack(alignment: .top) {
-                            StatsContent(all: readings.map(\.value), range: range,
-                                         targetSystolic: settings.targetSystolic, targetDiastolic: settings.targetDiastolic)
+                            StatsContent(all: attacks.map(\.value), period: period)
                                 .blur(radius: locked ? 8 : 0)
                                 .allowsHitTesting(!locked)
                                 .accessibilityHidden(locked)
@@ -37,11 +35,11 @@ struct StatsView: View {
                 .padding()
             }
             .background(AppColors.bgApp)
-            .navigationTitle("Statistics")
+            .navigationTitle("Insights")
             .onAppear { Analytics.track(.statsOpened, ["pro": purchases.isPro ? "true" : "false"]) }
             .sheet(isPresented: $showingPaywall) { PaywallView(source: "stats") }
             .toolbar {
-                if !readings.isEmpty {
+                if !attacks.isEmpty {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button { showingReport = true } label: { Label("Doctor Report", systemImage: "doc.text") }
                     }
@@ -55,10 +53,10 @@ struct StatsView: View {
         CardView {
             VStack(spacing: 12) {
                 Image(systemName: "lock.fill").font(.title).foregroundStyle(AppColors.accent)
-                Text("Full statistics are part of Pro")
+                Text("Insights are part of Pro")
                     .font(.title3.bold())
                     .foregroundStyle(AppColors.textPrimary)
-                Text("Trends, morning vs. evening, time in range and more — from your own readings.")
+                Text("Your common triggers, which medicine works, when attacks start, and how your month compares — from your own diary.")
                     .font(.body)
                     .foregroundStyle(AppColors.textSecondary)
                     .multilineTextAlignment(.center)
@@ -71,246 +69,189 @@ struct StatsView: View {
 }
 
 private struct StatsContent: View {
-    let all: [ReadingValue]
-    let range: ChartRange
-    let targetSystolic: Int
-    let targetDiastolic: Int
+    let all: [AttackValue]
+    let period: StatsPeriod
 
     private let calendar = Calendar.current
     private let now = Date()
 
-    private var values: [ReadingValue] {
-        range.interval(now: now).map { StatsEngine.readings(all, in: $0) } ?? all
-    }
-
-    private var previous: [ReadingValue] {
-        range.previousInterval(now: now).map { StatsEngine.readings(all, in: $0) } ?? []
-    }
-
-    /// Day-level numbers use one averaged reading per day, so a day with many
-    /// readings doesn't outweigh the rest. Extremes and morning/evening stay on
-    /// the raw readings — there the individual values are the point.
-    private var days: [ReadingValue] { StatsEngine.daily(values, calendar: calendar) }
+    private var interval: DateInterval? { period.interval(now: now) }
+    private var attacks: [AttackValue] { interval.map { StatsEngine.attacks(all, in: $0, now: now) } ?? all }
 
     var body: some View {
-        let days = self.days
+        let attacks = self.attacks
         VStack(spacing: 16) {
-            if let avg = StatsEngine.averages(days) {
-                averageCard(avg, readings: values.count, days: days)
-                trendCard(days)
-                extremesCard
-                categoryCard(days)
-                if let share = StatsEngine.timeInRange(days, systolicBelow: targetSystolic, diastolicBelow: targetDiastolic) {
-                    inRangeCard(share)
-                }
-                morningEveningCard
-                weekdayCard(days)
-                pressureCard(days)
-                streakCard
+            if attacks.isEmpty {
+                ContentUnavailableView("No headaches in this period", systemImage: "sun.max")
             } else {
-                ContentUnavailableView("No readings in this period", systemImage: "calendar")
+                summaryCard(attacks)
+                monthlyCard
+                triggersCard(attacks)
+                medicationCard(attacks)
+                symptomsCard(attacks)
+                timingCard(attacks)
+                painCard(attacks)
             }
         }
     }
 
     // MARK: Cards
 
-    private func averageCard(_ avg: StatsEngine.Averages, readings: Int, days: [ReadingValue]) -> some View {
-        let sys = Int(avg.systolic.rounded())
-        let dia = Int(avg.diastolic.rounded())
+    private func summaryCard(_ attacks: [AttackValue]) -> some View {
+        let span = interval ?? DateInterval(start: attacks.map(\.start).min() ?? now, end: now)
+        let s = StatsEngine.summary(all, in: span, now: now, calendar: calendar)
+        let change = StatsEngine.headacheDayChange(all, period: period, now: now, calendar: calendar)
         return CardView {
-            VStack(alignment: .leading, spacing: 10) {
-                title("Average")
-                ReadingNumbers(systolic: sys, diastolic: dia, pulse: avg.pulse.map { Int($0.rounded()) }, size: 44)
-                HStack {
-                    CategoryBadge(category: .classify(systolic: sys, diastolic: dia))
-                    Spacer()
-                    caption("\(readings == 1 ? "1 reading" : "\(readings) readings"), \(days.count == 1 ? "1 day" : "\(days.count) days")")
+            VStack(alignment: .leading, spacing: 16) {
+                title("Overview")
+                HStack(alignment: .top) {
+                    metric("\(s.headacheDays)", "headache days")
+                    metric("\(s.migraineDays)", "migraine days")
+                    metric("\(s.medicationDays)", "medication days")
                 }
-                caption("Each day counts once: several readings on the same day are averaged first.")
-                if let delta = StatsEngine.periodComparison(current: days, previous: StatsEngine.daily(previous, calendar: calendar)) {
-                    Text("vs. previous \(range.rawValue): \(signed(delta.systolic))/\(signed(delta.diastolic)) mmHg")
+                HStack(alignment: .top) {
+                    metric("\(s.attacks)", s.attacks == 1 ? "attack" : "attacks")
+                    metric(s.averageIntensity.map { $0.formatted(.number.precision(.fractionLength(1))) } ?? "—", "average pain")
+                    metric(s.averageDuration.map(DurationText.format) ?? "—", "average length")
+                }
+                if let change {
+                    let text = change == 0 ? "Same number of headache days as the previous \(period.rawValue)."
+                        : "\(abs(change)) \(abs(change) == 1 ? "headache day" : "headache days") \(change < 0 ? "fewer" : "more") than the previous \(period.rawValue)."
+                    Label(text, systemImage: change < 0 ? "arrow.down.right" : change > 0 ? "arrow.up.right" : "equal")
                         .font(.body.weight(.medium))
-                        .foregroundStyle(AppColors.textPrimary)
+                        .foregroundStyle(change < 0 ? AppColors.success : AppColors.textPrimary)
                 }
             }
         }
     }
 
-    private func trendCard(_ days: [ReadingValue]) -> some View {
-        CardView {
-            VStack(alignment: .leading, spacing: 8) {
-                title("Trend")
-                if let trend = StatsEngine.trend(days) {
-                    Text("\(signed(trend.systolicPerWeek, digits: 1))/\(signed(trend.diastolicPerWeek, digits: 1)) mmHg per week")
-                        .font(AppFont.number(26))
-                        .foregroundStyle(AppColors.textPrimary)
-                    caption(trend.systolicPerWeek < -0.5 ? "Your top number is going down."
-                            : trend.systolicPerWeek > 0.5 ? "Your top number is going up."
-                            : "Your readings are holding steady.")
-                } else {
-                    caption("Needs readings on at least \(StatsEngine.trendMinReadings) different days, spread over a week or more.")
+    private var monthlyCard: some View {
+        let months = StatsEngine.monthly(all, months: period == .month || period == .quarter ? 6 : 12, now: now, calendar: calendar)
+        return CardView {
+            VStack(alignment: .leading, spacing: 12) {
+                title("Headache days per month")
+                Chart(months, id: \.month) { m in
+                    BarMark(x: .value("Month", m.month, unit: .month), y: .value("Days", m.headacheDays))
+                        .foregroundStyle(AppColors.headache.opacity(0.55))
+                        .cornerRadius(6)
+                    BarMark(x: .value("Month", m.month, unit: .month), y: .value("Days", m.migraineDays))
+                        .foregroundStyle(AppColors.migraine)
+                        .cornerRadius(6)
+                }
+                .chartXAxis { AxisMarks(values: .stride(by: .month, count: months.count > 6 ? 2 : 1)) { _ in AxisValueLabel(format: .dateTime.month(.abbreviated)) } }
+                .frame(height: 180)
+                HStack(spacing: 14) {
+                    legend(AppColors.migraine, "Migraine days")
+                    legend(AppColors.headache.opacity(0.55), "All headache days")
                 }
             }
         }
     }
 
     @ViewBuilder
-    private var extremesCard: some View {
-        if let e = StatsEngine.extremes(values) {
-            CardView {
-                VStack(alignment: .leading, spacing: 12) {
-                    title("Highest and lowest")
-                    extremeRow("Highest", e.highest)
-                    Divider()
-                    extremeRow("Lowest", e.lowest)
+    private func triggersCard(_ attacks: [AttackValue]) -> some View {
+        let shares = StatsEngine.triggerShares(attacks)
+        CardView {
+            VStack(alignment: .leading, spacing: 12) {
+                title("Possible triggers")
+                if shares.isEmpty {
+                    caption("Tick possible triggers when you log a headache, and the common ones show up here.")
+                } else {
+                    ForEach(shares.prefix(6), id: \.item) { s in
+                        shareBar(s.item.title, share: s.share, detail: "\(s.count) of \(attacks.count)", color: AppColors.accent)
+                    }
+                    caption("Share of attacks where you noted it. A pattern to talk over with your doctor, not proof of a cause.")
                 }
             }
         }
     }
 
-    private func extremeRow(_ label: String, _ r: ReadingValue) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(label).font(.headline).foregroundStyle(AppColors.textPrimary)
-                caption(r.date.formatted(date: .abbreviated, time: .shortened))
+    @ViewBuilder
+    private func medicationCard(_ attacks: [AttackValue]) -> some View {
+        let results = StatsEngine.medicationResults(attacks)
+        CardView {
+            VStack(alignment: .leading, spacing: 14) {
+                title("Medication")
+                if results.isEmpty {
+                    caption("Add what you took when you log a headache, and answer \"Did it help?\" to see what works for you.")
+                } else {
+                    ForEach(results, id: \.name) { m in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text(m.name).font(.headline).foregroundStyle(AppColors.textPrimary)
+                                Spacer()
+                                Text("\(m.doses) \(m.doses == 1 ? "dose" : "doses")").font(.subheadline).foregroundStyle(AppColors.textSecondary)
+                            }
+                            if let share = m.helpedShare {
+                                ProgressView(value: share).tint(AppColors.success)
+                                caption("Helped at least a little \(Int((share * 100).rounded()))% of the time (\(m.rated) rated)")
+                            } else {
+                                caption("No answers to \"Did it help?\" yet")
+                            }
+                        }
+                    }
+                }
             }
-            Spacer()
-            Text("\(r.systolic)/\(r.diastolic)")
-                .font(AppFont.number(26))
-                .foregroundStyle(r.category.color)
         }
     }
 
-    /// One column per category present, its height the number of days, count on top and share below.
-    private func categoryCard(_ days: [ReadingValue]) -> some View {
-        let distribution = StatsEngine.categoryDistribution(days)
-        let total = Double(days.count)
-        let present = BPCategory.allCases.filter { distribution[$0] != nil }
-        let most = Double(distribution.values.max() ?? 1)
+    @ViewBuilder
+    private func symptomsCard(_ attacks: [AttackValue]) -> some View {
+        let shares = StatsEngine.symptomShares(attacks)
+        if !shares.isEmpty {
+            CardView {
+                VStack(alignment: .leading, spacing: 12) {
+                    title("Symptoms")
+                    ForEach(shares.prefix(6), id: \.item) { s in
+                        shareBar(s.item.title, share: s.share, detail: "\(s.count) of \(attacks.count)", color: AppColors.headache)
+                    }
+                }
+            }
+        }
+    }
+
+    private func timingCard(_ attacks: [AttackValue]) -> some View {
+        let parts = StatsEngine.partOfDayCounts(attacks, calendar: calendar)
+        let weekdays = StatsEngine.weekdayCounts(attacks, calendar: calendar)
+        let symbols = calendar.shortWeekdaySymbols
+        let order = (0..<7).map { (calendar.firstWeekday - 1 + $0) % 7 + 1 }
         return CardView {
             VStack(alignment: .leading, spacing: 14) {
-                title("Days by category")
-                HStack(alignment: .bottom, spacing: 10) {
-                    ForEach(present, id: \.self) { c in
-                        let count = distribution[c] ?? 0
-                        VStack(spacing: 6) {
-                            Text("\(count)")
-                                .font(AppFont.number(20))
-                                .foregroundStyle(AppColors.textPrimary)
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(c.color)
-                                .frame(height: max(8, 120 * Double(count) / most))
-                            Text(c.shortTitle)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(AppColors.textPrimary)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                            Text("\(Int((Double(count) / total * 100).rounded()))%")
-                                .font(.subheadline)
-                                .foregroundStyle(AppColors.textSecondary)
+                title("When attacks start")
+                HStack(spacing: 8) {
+                    ForEach(StatsEngine.PartOfDay.allCases, id: \.self) { p in
+                        VStack(spacing: 4) {
+                            Text("\(parts[p] ?? 0)").font(AppFont.number(22)).foregroundStyle(AppColors.textPrimary)
+                            Text(p.title).font(.caption).foregroundStyle(AppColors.textSecondary).lineLimit(1).minimumScaleFactor(0.8)
                         }
                         .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(RoundedRectangle(cornerRadius: AppShape.chipRadius, style: .continuous).fill(AppColors.bgInput))
                         .accessibilityElement(children: .combine)
                     }
                 }
-            }
-        }
-    }
-
-    private func inRangeCard(_ share: Double) -> some View {
-        CardView {
-            VStack(alignment: .leading, spacing: 8) {
-                title("In your target range")
-                Text("\(Int((share * 100).rounded()))%")
-                    .font(AppFont.number(40))
-                    .foregroundStyle(AppColors.normal)
-                ProgressView(value: share).tint(AppColors.normal)
-                caption("Days with an average below \(targetSystolic)/\(targetDiastolic). You can change the target in Settings.")
-            }
-        }
-    }
-
-    private var morningEveningCard: some View {
-        let split = StatsEngine.morningVsEvening(values, calendar: calendar)
-        return CardView {
-            VStack(alignment: .leading, spacing: 12) {
-                title("Morning vs. evening")
-                HStack(spacing: 12) {
-                    partOfDay("Morning", "sunrise.fill", "before noon", split.morning)
-                    partOfDay("Evening", "moon.fill", "after 6 PM", split.evening)
-                }
-            }
-        }
-    }
-
-    private func partOfDay(_ name: String, _ icon: String, _ hint: String, _ avg: StatsEngine.Averages?) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Label(name, systemImage: icon).font(.headline).foregroundStyle(AppColors.textPrimary)
-            if let avg {
-                Text("\(Int(avg.systolic.rounded()))/\(Int(avg.diastolic.rounded()))")
-                    .font(AppFont.number(28))
-                    .foregroundStyle(AppColors.textPrimary)
-            } else {
-                Text("—").font(AppFont.number(28)).foregroundStyle(AppColors.textSecondary)
-            }
-            caption(hint)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(RoundedRectangle(cornerRadius: 12).fill(AppColors.bgInput))
-    }
-
-    private func weekdayCard(_ days: [ReadingValue]) -> some View {
-        let byDay = StatsEngine.weekdayAverages(days, calendar: calendar)
-        let symbols = calendar.shortWeekdaySymbols
-        // Start the week where the user's calendar does (Sunday in the US).
-        let order = (0..<7).map { (calendar.firstWeekday - 1 + $0) % 7 + 1 }
-        return CardView {
-            VStack(alignment: .leading, spacing: 12) {
-                title("Average by day of week")
                 Chart(order, id: \.self) { day in
-                    if let avg = byDay[day] {
-                        BarMark(x: .value("Day", symbols[day - 1]), y: .value("mmHg", avg.systolic))
-                            .foregroundStyle(AppColors.systolic)
-                            .position(by: .value("Type", "Systolic"))
-                        BarMark(x: .value("Day", symbols[day - 1]), y: .value("mmHg", avg.diastolic))
-                            .foregroundStyle(AppColors.diastolic)
-                            .position(by: .value("Type", "Diastolic"))
-                    }
+                    BarMark(x: .value("Day", symbols[day - 1]), y: .value("Attacks", weekdays[day] ?? 0))
+                        .foregroundStyle(AppColors.accent)
+                        .cornerRadius(6)
                 }
                 .chartXScale(domain: order.map { symbols[$0 - 1] })
-                .frame(height: 180)
-                caption("Dark bars: top number. Light bars: bottom number.")
+                .chartYAxis { AxisMarks(values: .automatic(desiredCount: 3)) }
+                .frame(height: 140)
+                caption("Night is midnight–6 AM, morning 6–noon, afternoon noon–6 PM, evening after 6 PM.")
             }
         }
     }
 
-    private func pressureCard(_ days: [ReadingValue]) -> some View {
-        CardView {
-            VStack(alignment: .leading, spacing: 12) {
-                title("More numbers")
-                if let pp = StatsEngine.pulsePressure(days) {
-                    metric("Pulse pressure", "\(Int(pp.rounded())) mmHg", "The gap between your top and bottom numbers.")
-                }
-                Divider()
-                if let map = StatsEngine.meanArterialPressure(days) {
-                    metric("Mean arterial pressure", "\(Int(map.rounded())) mmHg", "The average pressure in your arteries during one heartbeat.")
-                }
-            }
-        }
-    }
-
-    private var streakCard: some View {
-        let streak = StatsEngine.streak(all, today: now, calendar: calendar)
+    private func painCard(_ attacks: [AttackValue]) -> some View {
+        let counts = StatsEngine.intensityCounts(attacks)
         return CardView {
-            HStack(spacing: 14) {
-                Image(systemName: "flame.fill").font(.largeTitle).foregroundStyle(AppColors.stage1)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(streak == 1 ? "1 day in a row" : "\(streak) days in a row")
-                        .font(.title3.bold())
-                        .foregroundStyle(AppColors.textPrimary)
-                    caption("Days in a row with at least one reading.")
+            VStack(alignment: .leading, spacing: 12) {
+                title("Peak pain")
+                ForEach(IntensityLevel.allCases.reversed(), id: \.self) { level in
+                    let count = counts[level] ?? 0
+                    shareBar("\(level.title) (\(level == .mild ? "1–3" : level == .moderate ? "4–6" : "7–10"))",
+                             share: Double(count) / Double(max(attacks.count, 1)), detail: "\(count)", color: level.color)
                 }
             }
         }
@@ -318,14 +259,38 @@ private struct StatsContent: View {
 
     // MARK: Pieces
 
-    private func metric(_ name: String, _ value: String, _ explanation: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+    private func shareBar(_ label: String, share: Double, detail: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
             HStack {
-                Text(name).font(.headline).foregroundStyle(AppColors.textPrimary)
+                Text(label).font(.body.weight(.medium)).foregroundStyle(AppColors.textPrimary)
                 Spacer()
-                Text(value).font(AppFont.number(22)).foregroundStyle(AppColors.textPrimary)
+                Text(detail).font(.subheadline).foregroundStyle(AppColors.textSecondary)
             }
-            caption(explanation)
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(AppColors.bgInput)
+                    Capsule().fill(color).frame(width: max(8, geo.size.width * share))
+                }
+            }
+            .frame(height: 8)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityValue("\(Int((share * 100).rounded())) percent")
+    }
+
+    private func metric(_ value: String, _ label: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value).font(AppFont.number(28)).foregroundStyle(AppColors.textPrimary).lineLimit(1).minimumScaleFactor(0.6)
+            Text(label).font(.subheadline).foregroundStyle(AppColors.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func legend(_ color: Color, _ text: String) -> some View {
+        HStack(spacing: 6) {
+            RoundedRectangle(cornerRadius: 3).fill(color).frame(width: 12, height: 12)
+            Text(text).font(.caption).foregroundStyle(AppColors.textSecondary)
         }
     }
 
@@ -336,10 +301,5 @@ private struct StatsContent: View {
     private func caption(_ text: String) -> some View {
         Text(text).font(.subheadline).foregroundStyle(AppColors.textSecondary)
             .fixedSize(horizontal: false, vertical: true)
-    }
-
-    private func signed(_ value: Double, digits: Int = 0) -> String {
-        let text = value.formatted(.number.precision(.fractionLength(digits)).sign(strategy: .always(includingZero: false)))
-        return text
     }
 }

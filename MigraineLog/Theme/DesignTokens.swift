@@ -3,79 +3,104 @@ import SwiftUI
 extension Color {
     init(light: UInt, dark: UInt) {
         self.init(uiColor: UIColor { traits in
-            let hex = traits.userInterfaceStyle == .dark ? dark : light
-            return UIColor(red: CGFloat((hex >> 16) & 0xFF) / 255,
-                           green: CGFloat((hex >> 8) & 0xFF) / 255,
-                           blue: CGFloat(hex & 0xFF) / 255,
-                           alpha: 1)
+            UIColor(hex: traits.userInterfaceStyle == .dark ? dark : light)
         })
     }
 }
 
-/// "Logbook" look: warm paper, ink-blue text and the icon's blue, white cards
-/// with a hairline instead of shadows. Category colors are the AHA chart colors
-/// people know from the doctor's office, darkened in light mode for contrast.
-enum AppColors {
-    static let bgApp = Color(light: 0xF6F3EC, dark: 0x1A1916)
-    static let bgCard = Color(light: 0xFFFFFF, dark: 0x24221E)
-    /// Fills for inputs, segmented tracks and inactive chips.
-    static let bgInput = Color(light: 0xEFEBE2, dark: 0x2F2C27)
-
-    static let textPrimary = Color(light: 0x1B2333, dark: 0xF3EFE6)
-    static let textSecondary = Color(light: 0x575D6B, dark: 0xBDB7AC)
-    static let separator = Color(light: 0xE6E0D3, dark: 0x34312B)
-
-    static let accent = Color(light: 0x2F5FD0, dark: 0x7EA2F2)
-    /// Fill behind white text (buttons, selected chips): the icon blue in both
-    /// modes, since the lighter dark-mode accent drops white text below 3:1.
-    static let accentFill = Color(light: 0x2F5FD0, dark: 0x2F5FD0)
-    static let accentTint = Color(light: 0xE5ECFB, dark: 0x26324D)
-
-    static let systolic = Color(light: 0x2F5FD0, dark: 0x7EA2F2)
-    static let diastolic = Color(light: 0x0891B2, dark: 0x67E8F9)
-    static let pulse = Color(light: 0x6B7280, dark: 0x9CA3AF)
-
-    // Low sits off the green→red scale in indigo: it's a different concern, not "better than normal".
-    static let low = Color(light: 0x4338CA, dark: 0xA5B4FC)
-    static let normal = Color(light: 0x15803D, dark: 0x4ADE80)
-    static let elevated = Color(light: 0xA16207, dark: 0xFACC15)
-    static let stage1 = Color(light: 0xC2410C, dark: 0xFB923C)
-    static let stage2 = Color(light: 0xB91C1C, dark: 0xF87171)
-    static let crisis = Color(light: 0x7F1D1D, dark: 0xFCA5A5)
-    /// The crisis banner's fill under white text: dark red in both modes.
-    static let crisisFill = Color(light: 0x7F1D1D, dark: 0x991B1B)
+extension UIColor {
+    convenience init(hex: UInt) {
+        self.init(red: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
+                  blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
+    }
 }
 
-extension BPCategory {
-    var color: Color {
-        switch self {
-        case .low: AppColors.low
-        case .normal: AppColors.normal
-        case .elevated: AppColors.elevated
-        case .stage1: AppColors.stage1
-        case .stage2: AppColors.stage2
-        case .crisis: AppColors.crisis
-        }
+/// "Tide": cool sea-glass teal moving into deep indigo (design/directions/README.md,
+/// direction B). Low-glare grey-mint surfaces in light mode, near-black teal
+/// in dark mode, tonal tiles without borders. Deliberately unlike Simply BP's
+/// warm paper and blue, and outside the purple most migraine apps use.
+enum AppColors {
+    static let bgApp = Color(light: 0xE6EDEC, dark: 0x0B1315)
+    static let bgCard = Color(light: 0xF2F6F5, dark: 0x132023)
+    /// Fills for inputs, segmented tracks and inactive chips.
+    static let bgInput = Color(light: 0xD9E3E2, dark: 0x1B2B2E)
+
+    static let textPrimary = Color(light: 0x0F2627, dark: 0xE1EDEB)
+    static let textSecondary = Color(light: 0x486364, dark: 0x8DA6A7)
+    static let separator = Color(light: 0xC9D6D5, dark: 0x213236)
+
+    static let accent = Color(light: 0x146B66, dark: 0x5FCBBF)
+    /// Fill behind white text (buttons, selected chips): 6.3:1 light, 5.5:1 dark.
+    static let accentFill = Color(light: 0x146B66, dark: 0x13756F)
+    static let accentTint = Color(light: 0xCDE6E2, dark: 0x16393A)
+
+    /// Data colors only — the indigo end never becomes a button or tint.
+    static let migraine = Color(light: 0x3A4AA3, dark: 0x8E98F2)
+    static let headache = Color(light: 0x1B8F86, dark: 0x5FCBBF)
+
+    static let danger = Color(light: 0xA3233A, dark: 0xF08A9B)
+    /// The emergency note's fill under white text.
+    static let dangerFill = Color(light: 0x8E1D33, dark: 0x8E1D33)
+    static let success = Color(light: 0x1F7A4F, dark: 0x6FD3A0)
+}
+
+/// The pain ramp in five steps (1–2, 3–4, 5–6, 7–8, 9–10): darker with pain in
+/// light mode, brighter in dark mode. Every use also prints the number, so it
+/// reads without color.
+enum PainRamp {
+    private static let light: [UInt] = [0xC4E7E1, 0x80CCC3, 0x2C7F9A, 0x4351A6, 0x2B2C77]
+    private static let dark: [UInt] = [0x1D4644, 0x2A7471, 0x3C97B6, 0x8098F0, 0xB9B6FF]
+    /// Which steps carry dark text (the rest white), chosen for ≥ 4.5:1.
+    private static let darkTextLight: Set<Int> = [0, 1]
+    private static let darkTextDark: Set<Int> = [2, 3, 4]
+
+    static func step(_ intensity: Int) -> Int { min(max((intensity - 1) / 2, 0), 4) }
+
+    static func fill(_ intensity: Int) -> Color {
+        let i = step(intensity)
+        return Color(light: light[i], dark: dark[i])
     }
 
-    /// Short name for the scale under a reading.
-    var shortTitle: String {
+    static func text(_ intensity: Int) -> Color {
+        let i = step(intensity)
+        return Color(uiColor: UIColor { traits in
+            let isDark = traits.userInterfaceStyle == .dark
+            let darkText = isDark ? darkTextDark.contains(i) : darkTextLight.contains(i)
+            return darkText ? UIColor(hex: isDark ? 0x0B1315 : 0x0F2627) : .white
+        })
+    }
+}
+
+extension IntensityLevel {
+    /// The band's representative ramp color, for charts and labels.
+    var color: Color {
         switch self {
-        case .low: "Low"
-        case .normal: "Normal"
-        case .elevated: "Elevated"
-        case .stage1: "Stage 1"
-        case .stage2: "Stage 2"
-        case .crisis: "Crisis"
+        case .mild: PainRamp.fill(4)
+        case .moderate: PainRamp.fill(6)
+        case .severe: PainRamp.fill(9)
+        }
+    }
+}
+
+extension AttackKind {
+    var color: Color {
+        switch self {
+        case .migraine: AppColors.migraine
+        case .headache: AppColors.headache
         }
     }
 }
 
 enum AppFont {
-    /// Reading numbers: rounded and heavy, like Apple Health. Callers scale `size` with `@ScaledMetric`.
-    static func number(_ size: CGFloat) -> Font { .system(size: size, weight: .bold, design: .rounded) }
+    /// Big figures: ultralight SF Pro, calm rather than loud. Callers scale `size` with `@ScaledMetric`.
+    static func hero(_ size: CGFloat) -> Font { .system(size: size, weight: .ultraLight) }
+    /// Mid-size numbers in tiles and badges.
+    static func number(_ size: CGFloat) -> Font { .system(size: size, weight: .light) }
 }
 
 enum AppShape {
-    static let cardRadius: CGFloat = 22
+    /// Tiles and panels.
+    static let cardRadius: CGFloat = 16
+    static let buttonRadius: CGFloat = 18
+    static let chipRadius: CGFloat = 12
 }

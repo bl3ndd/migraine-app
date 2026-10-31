@@ -6,12 +6,13 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var context
     @Environment(PurchaseService.self) private var purchases
     @Environment(AppSettings.self) private var settings
-    @Query(sort: \Reading.date) private var readings: [Reading]
+    @Query(sort: \Attack.start) private var attacks: [Attack]
 
     @State private var backup: BackupDocument?
     @State private var showImporter = false
     @State private var message: String?
     @State private var syncing = false
+    @State private var newMedication = ""
 
     var body: some View {
         NavigationStack {
@@ -38,36 +39,43 @@ struct SettingsView: View {
                     } header: {
                         Text("Apple Health")
                     } footer: {
-                        Text("Readings you add are saved to Apple Health, and readings from your smart monitor show up here. Apple Health keeps them in sync across your devices: on a new iPhone, turn this on and your history comes back.")
+                        Text("Finished headaches are saved to Apple Health as mild, moderate or severe, and headaches other apps log there show up here. Apple Health keeps them in sync across your devices: on a new iPhone, turn this on and your diary comes back.")
                     }
                 }
 
                 Section {
-                    reminderRow("Morning reminder", morning: true)
-                    reminderRow("Evening reminder", morning: false)
+                    reminderRow
                 } header: {
-                    Text("Reminders")
+                    Text("Reminder")
                 } footer: {
-                    Text("Doctors usually ask for readings in the morning and in the evening.")
+                    Text("One gentle check-in a day, so headaches you'd forget still make it into your monthly count.")
                 }
 
-                @Bindable var settings = settings
                 Section {
-                    Stepper("Top number below \(settings.targetSystolic)", value: $settings.targetSystolic, in: 100...160, step: 5)
-                    Stepper("Bottom number below \(settings.targetDiastolic)", value: $settings.targetDiastolic, in: 60...100, step: 5)
+                    ForEach(settings.medicationNames, id: \.self) { name in
+                        Text(name)
+                    }
+                    .onDelete { offsets in settings.medicationNames.remove(atOffsets: offsets) }
+                    HStack {
+                        TextField("Add a medicine", text: $newMedication)
+                            .submitLabel(.done)
+                            .onSubmit(addMedication)
+                        Button("Add", action: addMedication)
+                            .disabled(newMedication.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
                 } header: {
-                    Text("Your target")
+                    Text("My medicines")
                 } footer: {
-                    Text("Used for \"In your target range\" in Statistics and the doctor report. 130/80 is a common goal; ask your doctor what yours is.")
+                    Text("Shown as one-tap buttons when you log a headache. Swipe left to remove one.")
                 }
 
                 Section {
                     Button {
                         prepareBackup()
                     } label: {
-                        Label("Back Up Readings", systemImage: "square.and.arrow.up")
+                        Label("Back Up Diary", systemImage: "square.and.arrow.up")
                     }
-                    .disabled(readings.isEmpty)
+                    .disabled(attacks.isEmpty)
                     Button {
                         showImporter = true
                     } label: {
@@ -76,13 +84,13 @@ struct SettingsView: View {
                 } header: {
                     Text("Backup")
                 } footer: {
-                    Text("Saves all your readings to a file, wherever you choose. Restoring only adds readings you don't already have — nothing gets deleted.")
+                    Text("Saves your whole diary to a file, wherever you choose. Restoring only adds entries you don't already have — nothing gets deleted.")
                 }
 
                 Section("Purchases") {
                     if purchases.isPro {
-                        Label("Simply BP Pro is unlocked", systemImage: "checkmark.seal.fill")
-                            .foregroundStyle(AppColors.normal)
+                        Label("Migraine Log Pro is unlocked", systemImage: "checkmark.seal.fill")
+                            .foregroundStyle(AppColors.success)
                     }
                     Button("Restore Purchases") {
                         Task { message = PurchaseService.message(for: await purchases.restore()) }
@@ -90,22 +98,20 @@ struct SettingsView: View {
                     .disabled(purchases.isWorking)
                 }
 
+                @Bindable var settings = settings
                 Section {
                     Toggle("Share anonymous usage stats", isOn: $settings.analyticsEnabled)
                         .tint(AppColors.accent)
                 } header: {
                     Text("Privacy")
                 } footer: {
-                    Text("Counts which features get used, so we know what to improve. Never your readings, Health data or anything you type.")
+                    Text("Counts which features get used, so we know what to improve. Never your headaches, medicines, Health data or anything you type.")
                 }
 
                 Section("About") {
                     Link(destination: AppLinks.privacyPolicy) { Label("Privacy Policy", systemImage: "hand.raised.fill") }
                     Link(destination: AppLinks.support) { Label("Contact Support", systemImage: "envelope.fill") }
-                    Text("Simply BP is not a medical device and does not measure blood pressure. It records the readings you take with your own monitor. Always check with your doctor before making medical decisions.")
-                        .font(.subheadline)
-                        .foregroundStyle(AppColors.textSecondary)
-                    Text("High blood pressure categories follow the 2017 ACC/AHA guideline. \"Low\" marks readings below 90/60, a commonly used threshold.")
+                    Text("Migraine Log is a diary, not a medical device. It doesn't diagnose or treat anything, and triggers it shows are what you noted, not proven causes. Always check with your doctor before making medical decisions.")
                         .font(.subheadline)
                         .foregroundStyle(AppColors.textSecondary)
                 }
@@ -124,7 +130,7 @@ struct SettingsView: View {
             .fileImporter(isPresented: $showImporter, allowedContentTypes: [.json]) { result in
                 restore(result)
             }
-            .alert("Simply BP", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
+            .alert("Migraine Log", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(message ?? "")
@@ -132,43 +138,37 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: Reminders
+    // MARK: Reminder
 
-    /// One toggle + time per slot; the stored list keeps at most one morning and one evening time.
     @ViewBuilder
-    private func reminderRow(_ title: String, morning: Bool) -> some View {
-        let current = settings.reminderMinutes.first { ReminderTime.isMorning($0) == morning }
-        Toggle(title, isOn: Binding(
+    private var reminderRow: some View {
+        let current = settings.reminderMinutes.first
+        Toggle("Daily check-in", isOn: Binding(
             get: { current != nil },
-            set: { on in
-                let defaultTime = morning ? NotificationService.defaultMorning : NotificationService.defaultEvening
-                Task { await setReminder(morning: morning, to: on ? (current ?? defaultTime) : nil) }
-            }
+            set: { on in Task { await setReminder(on ? (current ?? NotificationService.defaultEvening) : nil) } }
         ))
         .tint(AppColors.accent)
         if let current {
             DatePicker("Time", selection: Binding(
                 get: { ReminderTime.date(fromMinutes: current) },
-                set: { date in
-                    let minutes = ReminderTime.minutes(from: date)
-                    // A time picked on the other side of noon would jump slots; keep it in this one.
-                    guard ReminderTime.isMorning(minutes) == morning else { return }
-                    Task { await setReminder(morning: morning, to: minutes) }
-                }
+                set: { date in Task { await setReminder(ReminderTime.minutes(from: date)) } }
             ), displayedComponents: .hourAndMinute)
         }
     }
 
-    private func setReminder(morning: Bool, to minutes: Int?) async {
+    private func setReminder(_ minutes: Int?) async {
         if minutes != nil, !(await NotificationService.requestPermission()) {
-            message = "Notifications are off for Simply BP. Turn them on in the Settings app to get reminders."
+            message = "Notifications are off for Migraine Log. Turn them on in the Settings app to get the reminder."
             return
         }
-        var list = settings.reminderMinutes.filter { ReminderTime.isMorning($0) != morning }
-        if let minutes { list.append(minutes) }
-        settings.reminderMinutes = list.sorted()
+        settings.reminderMinutes = minutes.map { [$0] } ?? []
         NotificationService.schedule(minutes: settings.reminderMinutes)
         Analytics.track(.remindersChanged, ["count": String(settings.reminderMinutes.count)])
+    }
+
+    private func addMedication() {
+        settings.rememberMedication(newMedication)
+        newMedication = ""
     }
 
     // MARK: Health
@@ -187,19 +187,19 @@ struct SettingsView: View {
         await syncNow()
     }
 
-    /// Pull first, so readings synced from another device aren't written back as duplicates.
+    /// Pull first, so headaches synced from another device aren't written back as duplicates.
     private func syncNow() async {
         syncing = true
         let imported = await HealthService.importNew(into: context, deletedIDs: settings.deletedIDs)
         let saved = await HealthService.backfill(context)
         syncing = false
         Analytics.track(.healthSynced)
-        message = "Brought in \(imported) readings from Apple Health and saved \(saved) to it. If nothing moved, check Settings › Health › Data Access & Devices › Simply BP and allow blood pressure and heart rate."
+        message = "Brought in \(imported) headaches from Apple Health and saved \(saved) to it. If nothing moved, check Settings › Health › Data Access & Devices › Migraine Log and allow Headache."
     }
 
     private func prepareBackup() {
         do {
-            backup = BackupDocument(data: try BackupService.export(readings))
+            backup = BackupDocument(data: try BackupService.export(attacks))
             Analytics.track(.backupSaved)
         } catch {
             message = "The backup couldn't be created. Please try again."
@@ -214,9 +214,9 @@ struct SettingsView: View {
         do {
             let outcome = try BackupService.restore(from: try Data(contentsOf: url), into: context)
             Analytics.track(.backupRestored)
-            message = "Added \(outcome.added) readings. Skipped \(outcome.skipped) you already had."
+            message = "Added \(outcome.added) entries. Skipped \(outcome.skipped) you already had."
         } catch {
-            message = "This file doesn't look like a Simply BP backup."
+            message = "This file doesn't look like a Migraine Log backup."
         }
     }
 }

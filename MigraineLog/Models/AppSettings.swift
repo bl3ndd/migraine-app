@@ -7,7 +7,7 @@ final class AppSettings {
     @ObservationIgnored private let defaults: UserDefaults
 
     var hasCompletedOnboarding: Bool { didSet { defaults.set(hasCompletedOnboarding, forKey: Keys.onboarding) } }
-    /// The paywall is offered once, after the first saved reading, never again unprompted.
+    /// The paywall is offered once, after the first saved attack, never again unprompted.
     var hasSeenIntroPaywall: Bool { didSet { defaults.set(hasSeenIntroPaywall, forKey: Keys.introPaywall) } }
     var healthEnabled: Bool { didSet { defaults.set(healthEnabled, forKey: Keys.health) } }
     /// Anonymous usage counts (TelemetryDeck). On by default, as in Mezame; off in Settings.
@@ -17,21 +17,27 @@ final class AppSettings {
             Analytics.setEnabled(analyticsEnabled)
         }
     }
-    /// Set by a widget's "add" link; Home opens the entry form and clears it. Not persisted.
-    var pendingAddReading = false
-    /// Health sample ids and reading ids the user deleted, so a Health sync never
-    /// brings them back (a cuff's sample stays in Health; we just stop importing it).
+    /// Set by a widget's "log" link; Home opens the log form and clears it. Not persisted.
+    var pendingLog = false
+    /// Health sample ids and attack ids the user deleted, so a Health sync never
+    /// brings them back.
     private(set) var deletedIDs: Set<UUID> {
         didSet { defaults.set(deletedIDs.map(\.uuidString), forKey: Keys.deleted) }
     }
-    /// Reminder times as minutes since midnight (480 = 08:00).
+    /// Reminder times as minutes since midnight (1260 = 21:00). One evening check-in.
     var reminderMinutes: [Int] { didSet { defaults.set(reminderMinutes, forKey: Keys.reminders) } }
-    /// "In range" means below both targets. 130/80 is the AHA treatment goal for most adults.
-    var targetSystolic: Int { didSet { defaults.set(targetSystolic, forKey: Keys.targetSystolic) } }
-    var targetDiastolic: Int { didSet { defaults.set(targetDiastolic, forKey: Keys.targetDiastolic) } }
+    /// The medicines the person usually takes, offered as one-tap chips when logging.
+    var medicationNames: [String] { didSet { defaults.set(medicationNames, forKey: Keys.medications) } }
 
     func rememberDeleted(_ ids: [UUID]) {
         deletedIDs.formUnion(ids)
+    }
+
+    /// Adds a name typed while logging, so it's a chip next time. Case-insensitive, keeps the first spelling.
+    func rememberMedication(_ name: String) {
+        let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty, !medicationNames.contains(where: { $0.caseInsensitiveCompare(clean) == .orderedSame }) else { return }
+        medicationNames.append(clean)
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -42,18 +48,16 @@ final class AppSettings {
         deletedIDs = Set((defaults.stringArray(forKey: Keys.deleted) ?? []).compactMap(UUID.init(uuidString:)))
         analyticsEnabled = defaults.object(forKey: Keys.analytics) as? Bool ?? true
         reminderMinutes = defaults.array(forKey: Keys.reminders) as? [Int] ?? []
-        targetSystolic = defaults.object(forKey: Keys.targetSystolic) as? Int ?? 130
-        targetDiastolic = defaults.object(forKey: Keys.targetDiastolic) as? Int ?? 80
+        medicationNames = defaults.stringArray(forKey: Keys.medications) ?? []
     }
 
     private enum Keys {
         static let onboarding = "hasCompletedOnboarding"
         static let introPaywall = "hasSeenIntroPaywall"
         static let health = "healthEnabled"
-        static let deleted = "deletedReadingIDs"
+        static let deleted = "deletedAttackIDs"
         static let analytics = "analyticsEnabled"
         static let reminders = "reminderMinutes"
-        static let targetSystolic = "targetSystolic"
-        static let targetDiastolic = "targetDiastolic"
+        static let medications = "medicationNames"
     }
 }

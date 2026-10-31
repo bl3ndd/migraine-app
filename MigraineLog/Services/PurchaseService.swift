@@ -1,7 +1,7 @@
 import Foundation
 import StoreKit
 
-/// Simply BP Pro is a single non-consumable unlock. StoreKit 2 keeps the
+/// Migraine Log Pro is a single non-consumable unlock. StoreKit 2 keeps the
 /// entitlement itself, so nothing about the purchase is persisted here —
 /// asking StoreKit on every launch is both simpler and harder to spoof than
 /// mirroring a flag into UserDefaults.
@@ -19,7 +19,7 @@ final class PurchaseService {
 
     static func message(for outcome: RestoreOutcome) -> String {
         switch outcome {
-        case .restored: "Simply BP Pro is unlocked again."
+        case .restored: "Migraine Log Pro is unlocked again."
         case .nothingToRestore: "No earlier Pro purchase was found for this Apple Account."
         case .failed: "Couldn't reach the App Store. Check your connection and try again."
         }

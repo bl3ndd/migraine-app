@@ -4,36 +4,24 @@ import Foundation
 
 struct DemoDataTests {
     let now = Date(timeIntervalSince1970: 1_800_000_000)
-    var calendar: Calendar {
-        var c = Calendar(identifier: .gregorian)
-        c.timeZone = TimeZone(identifier: "America/New_York")!
-        return c
+    let calendar = Calendar(identifier: .gregorian)
+
+    @Test func deterministicAndPlausible() {
+        let a = DemoData.attacks(now: now, calendar: calendar)
+        let again = DemoData.attacks(now: now, calendar: calendar)
+        #expect(a.map(\.start) == again.map(\.start))
+        #expect(a.map(\.intensity) == again.map(\.intensity))
+        #expect(a.map(\.triggers) == again.map(\.triggers))
+        // ~2 a week over 90 days.
+        #expect((15...45).contains(a.count))
+        #expect(a.allSatisfy { AttackLimits.problem(start: $0.start, end: $0.end, intensity: $0.intensity, now: now) == nil })
+        #expect(a.contains { $0.kind == .headache } && a.contains { $0.kind == .migraine })
+        #expect(Set(a.flatMap(\.medications).map(\.name)) == [DemoData.triptan, DemoData.ibuprofen])
     }
 
-    @Test func plausibleAndDeterministic() {
-        let a = DemoData.samples(now: now, calendar: calendar)
-        #expect(a == DemoData.samples(now: now, calendar: calendar))
-        #expect(a.count > 60)
-        #expect(a.allSatisfy { ReadingLimits.isValid(systolic: $0.value.systolic, diastolic: $0.value.diastolic, pulse: $0.value.pulse) })
-        #expect(a.allSatisfy { $0.value.date <= now })
-    }
-
-    @Test func coversSeveralCategoriesAndImproves() {
-        let a = DemoData.samples(now: now, calendar: calendar)
-        let days = StatsEngine.daily(a.map(\.value), calendar: calendar)
-        #expect(Set(days.map(\.category)).count >= 3)
-        #expect(StatsEngine.trend(days)!.systolicPerWeek < 0)
-    }
-}
-
-extension DemoDataTests {
-    /// Store screenshots come from this data: it should show a varied, improving picture.
-    @Test func showsVariedCategoriesForScreenshots() {
-        let days = StatsEngine.daily(DemoData.samples(now: now, calendar: calendar).map(\.value), calendar: calendar)
-        let distribution = StatsEngine.categoryDistribution(days)
-        #expect((distribution[.normal] ?? 0) > 0)
-        #expect((distribution[.elevated] ?? 0) > 0)
-        #expect((distribution[.stage1] ?? 0) > 0)
-        #expect(StatsEngine.timeInRange(days, systolicBelow: 130, diastolicBelow: 80)! > 0.25)
+    @Test func endsOnAHeadacheFreeStreak() {
+        let a = DemoData.attacks(now: now, calendar: calendar)
+        #expect(a.allSatisfy { $0.end != nil })
+        #expect((StatsEngine.headacheFreeDays(a, now: now, calendar: calendar) ?? 0) >= 3)
     }
 }

@@ -5,28 +5,28 @@ import QuickLook
 /// Doctor PDF report (Pro): pick a period, optionally a name, preview and share.
 struct ReportView: View {
     @Environment(PurchaseService.self) private var purchases
-    @Environment(AppSettings.self) private var settings
     @Environment(\.dismiss) private var dismiss
-    @Query(sort: \Reading.date) private var readings: [Reading]
+    @Query(sort: \Attack.start) private var attacks: [Attack]
 
-    @State private var range = ChartRange.month
+    @State private var period = StatsPeriod.quarter
     @AppStorage("reportName") private var name = ""
     @State private var pdf: URL?
     @State private var showingPaywall = false
 
-    private var selected: [Reading] {
-        guard let interval = range.interval(now: Date()) else { return readings }
-        return readings.filter { interval.contains($0.date) }
+    private var selected: [Attack] {
+        guard let interval = period.interval(now: Date()) else { return attacks }
+        let now = Date()
+        return attacks.filter { $0.value.interval(now: now).intersects(interval) || interval.contains($0.start) }
     }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    SegmentedChips(options: ChartRange.allCases, selection: $range) { $0.rawValue }
-                    LabeledContent("Readings in this period", value: "\(selected.count)")
+                    SegmentedChips(options: StatsPeriod.allCases, selection: $period) { $0.rawValue }
+                    LabeledContent("Attacks in this period", value: "\(selected.count)")
                 } footer: {
-                    Text("Your doctor gets a one-page summary built on daily averages, a chart, and a table of every reading.")
+                    Text("Your doctor gets headache and migraine days, medication days, suspected triggers, how each medicine worked, and a table of every attack. Neurologists usually ask for the last 3 months.")
                 }
                 Section {
                     TextField("Your name (optional)", text: $name)
@@ -64,8 +64,7 @@ struct ReportView: View {
             showingPaywall = true
             return
         }
-        Analytics.track(.reportCreated, ["range": range.rawValue])
-        pdf = PDFGenerator.generate(readings: selected.map { ReportReading($0) }, interval: range.interval(now: Date()),
-                                    patientName: name, targetSystolic: settings.targetSystolic, targetDiastolic: settings.targetDiastolic)
+        Analytics.track(.reportCreated, ["range": period.rawValue])
+        pdf = PDFGenerator.generate(attacks: selected.map { ReportAttack($0) }, interval: period.interval(now: Date()), patientName: name)
     }
 }

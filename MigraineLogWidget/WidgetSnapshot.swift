@@ -3,42 +3,38 @@ import SwiftUI
 
 /// Copy of the app's `WidgetSnapshot` (MigraineLog/Services/WidgetBridge.swift): change both together.
 struct WidgetSnapshot: Codable, Equatable {
-    var systolic: Int
-    var diastolic: Int
-    var pulse: Int?
-    var date: Date
-    var categoryRaw: Int
-    var categoryTitle: String
-    var weekSystolic: Int?
-    var weekDiastolic: Int?
+    var ongoingSince: Date?
+    var lastEnd: Date?
+    var monthHeadacheDays: Int
+    var monthStart: Date
 
     static let appGroup = "group.white.tea.MigraineLog"
     static let key = "widgetSnapshot"
-    static let addURL = URL(string: "simplymigraine://add")!
+    static let logURL = URL(string: "simplymigraine://log")!
 
     static func load() -> WidgetSnapshot? {
         guard let data = UserDefaults(suiteName: appGroup)?.data(forKey: key) else { return nil }
         return try? JSONDecoder().decode(WidgetSnapshot.self, from: data)
     }
 
-    static let sample = WidgetSnapshot(systolic: 128, diastolic: 82, pulse: 70, date: Date().addingTimeInterval(-3600),
-                                       categoryRaw: 2, categoryTitle: "High · Stage 1", weekSystolic: 126, weekDiastolic: 81)
+    static let sample = WidgetSnapshot(ongoingSince: nil, lastEnd: Date().addingTimeInterval(-4 * 86_400),
+                                       monthHeadacheDays: 5, monthStart: Date())
 
-    /// The app's AHA category colors (BPCategory.color), light and dark.
-    var categoryColor: Color {
-        switch categoryRaw {
-        case -1: Color(light: 0x4338CA, dark: 0xA5B4FC)
-        case 0: Color(light: 0x15803D, dark: 0x4ADE80)
-        case 1: Color(light: 0xA16207, dark: 0xFACC15)
-        case 2: Color(light: 0xC2410C, dark: 0xFB923C)
-        case 3: Color(light: 0xB91C1C, dark: 0xF87171)
-        default: Color(light: 0x7F1D1D, dark: 0xFCA5A5)
-        }
+    /// Whole days since the last attack ended, as of `date`; nil with no history.
+    func headacheFreeDays(on date: Date, calendar: Calendar = .current) -> Int? {
+        if ongoingSince != nil { return 0 }
+        guard let lastEnd else { return nil }
+        return max(0, calendar.dateComponents([.day], from: calendar.startOfDay(for: lastEnd), to: calendar.startOfDay(for: date)).day ?? 0)
+    }
+
+    /// The month count only means something within its own month.
+    func monthDays(on date: Date, calendar: Calendar = .current) -> Int {
+        calendar.isDate(monthStart, equalTo: date, toGranularity: .month) ? monthHeadacheDays : 0
     }
 }
 
 extension Color {
-    static let brand = Color(light: 0x1D4ED8, dark: 0x60A5FA)
+    static let brand = Color(light: 0x146B66, dark: 0x5FCBBF)
 
     init(light: UInt, dark: UInt) {
         self.init(uiColor: UIColor { traits in

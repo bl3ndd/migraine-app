@@ -2,8 +2,8 @@ import Testing
 import Foundation
 @testable import MigraineLog
 
-/// Long histories must stay fast: ~2 readings a day is ~700 a year, so 3,000–5,000
-/// is a realistic multi-year user. Budgets are generous; durations are printed.
+/// Long histories must stay fast: ~2 attacks a week is ~100 a year, so five
+/// years is a realistic heavy user. Budgets are generous; durations are printed.
 @MainActor
 struct PerformanceTests {
     let now = Date()
@@ -15,29 +15,29 @@ struct PerformanceTests {
         return elapsed
     }
 
-    @Test func statisticsOnFiveThousandReadings() {
-        let readings = DemoData.samples(now: now, calendar: calendar, days: 5 * 365).map(\.value)
-        #expect(readings.count > 3000)
-        let elapsed = time("stats \(readings.count) readings") {
-            let days = StatsEngine.daily(readings, calendar: calendar)
-            _ = StatsEngine.averages(days)
-            _ = StatsEngine.trend(days)
-            _ = StatsEngine.categoryDistribution(days)
-            _ = StatsEngine.timeInRange(days, systolicBelow: 130, diastolicBelow: 80)
-            _ = StatsEngine.weekdayAverages(days, calendar: calendar)
-            _ = StatsEngine.morningVsEvening(readings, calendar: calendar)
-            _ = StatsEngine.extremes(readings)
-            _ = StatsEngine.streak(readings, today: now, calendar: calendar)
+    @Test func statisticsOnFiveYears() {
+        let attacks = DemoData.attacks(now: now, calendar: calendar, days: 5 * 365)
+        #expect(attacks.count > 300)
+        let elapsed = time("stats \(attacks.count) attacks") {
+            _ = StatsEngine.summary(attacks, in: nil, now: now, calendar: calendar)
+            _ = StatsEngine.monthly(attacks, months: 12, now: now, calendar: calendar)
+            _ = StatsEngine.triggerShares(attacks)
+            _ = StatsEngine.medicationResults(attacks)
+            _ = StatsEngine.partOfDayCounts(attacks, calendar: calendar)
+            _ = StatsEngine.weekdayCounts(attacks, calendar: calendar)
+            _ = StatsEngine.headacheFreeDays(attacks, now: now, calendar: calendar)
+            if let month = calendar.dateInterval(of: .month, for: now) {
+                _ = StatsEngine.dayPeaks(attacks, now: now, calendar: calendar, within: month)
+            }
         }
         #expect(elapsed < .milliseconds(300))
     }
 
-    @Test func doctorReportOnThreeThousandReadings() throws {
-        let readings = DemoData.samples(now: now, calendar: calendar, days: 3 * 365)
-            .map { ReportReading(value: $0.value, arm: "left", position: "sitting", tags: $0.tags, note: "") }
+    @Test func doctorReportOnFiveYears() throws {
+        let attacks = DemoData.attacks(now: now, calendar: calendar, days: 5 * 365).map { ReportAttack(value: $0, note: "") }
         var url: URL?
-        let elapsed = time("PDF \(readings.count) readings") {
-            url = PDFGenerator.generate(readings: readings, interval: nil, patientName: "", now: now)
+        let elapsed = time("PDF \(attacks.count) attacks") {
+            url = PDFGenerator.generate(attacks: attacks, interval: nil, patientName: "", now: now)
         }
         let size = try FileManager.default.attributesOfItem(atPath: try #require(url).path)[.size] as? Int ?? 0
         print("PERF PDF size: \(size / 1024) KB")

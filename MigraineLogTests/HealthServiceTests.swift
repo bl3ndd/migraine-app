@@ -1,86 +1,92 @@
 import Testing
 import Foundation
+import HealthKit
 @testable import MigraineLog
 
 struct HealthServiceTests {
     static let t0 = Date(timeIntervalSince1970: 1_800_000_000)
     static let own = "white.tea.MigraineLog"
 
-    static func h(_ id: UUID = UUID(), source: String = "com.omron.app", meta: HealthMeta = HealthMeta()) -> HealthReading {
-        HealthReading(id: id, date: t0, systolic: 128, diastolic: 82, pulse: 70, sourceBundleID: source, meta: meta)
+    static func h(_ id: UUID = UUID(), source: String = "com.other.app", severity: HKCategoryValueSeverity = .moderate,
+                  meta: HealthMeta = HealthMeta()) -> HealthHeadache {
+        HealthHeadache(id: id, start: t0, end: t0.addingTimeInterval(3 * 3600), severity: severity.rawValue, sourceBundleID: source, meta: meta)
     }
 
     @Test func importSkipsKnownSamples() {
         let known = UUID()
-        let cuff = Self.h()
-        let fresh = HealthService.newImports([Self.h(known), cuff], existingHealthIDs: [known], existingReadingIDs: [])
-        #expect(fresh == [cuff])
+        let other = Self.h()
+        #expect(HealthService.newImports([Self.h(known), other], existingHealthIDs: [known], existingAttackIDs: []) == [other])
     }
 
     @Test func ownWritesComeBackOnAFreshInstall() {
-        let mine = Self.h(source: Self.own, meta: HealthMeta(readingID: UUID()))
-        #expect(HealthService.newImports([mine], existingHealthIDs: [], existingReadingIDs: []) == [mine])
+        let mine = Self.h(source: Self.own, meta: HealthMeta(attackID: UUID()))
+        #expect(HealthService.newImports([mine], existingHealthIDs: [], existingAttackIDs: []) == [mine])
     }
 
-    @Test func readingRestoredFromBackupIsNotImportedTwice() {
-        let readingID = UUID()
-        let mine = Self.h(source: Self.own, meta: HealthMeta(readingID: readingID))
-        #expect(HealthService.newImports([mine], existingHealthIDs: [], existingReadingIDs: [readingID]).isEmpty)
+    @Test func attackRestoredFromBackupIsNotImportedTwice() {
+        let attackID = UUID()
+        let mine = Self.h(source: Self.own, meta: HealthMeta(attackID: attackID))
+        #expect(HealthService.newImports([mine], existingHealthIDs: [], existingAttackIDs: [attackID]).isEmpty)
     }
 
     @Test func importIsIdempotent() {
-        let readings = [Self.h(), Self.h()]
-        let first = HealthService.newImports(readings, existingHealthIDs: [], existingReadingIDs: [])
-        let second = HealthService.newImports(readings, existingHealthIDs: Set(first.map(\.id)), existingReadingIDs: [])
+        let samples = [Self.h(), Self.h()]
+        let first = HealthService.newImports(samples, existingHealthIDs: [], existingAttackIDs: [])
+        let second = HealthService.newImports(samples, existingHealthIDs: Set(first.map(\.id)), existingAttackIDs: [])
         #expect(first.count == 2)
         #expect(second.isEmpty)
     }
 
+    @Test func deletedAttacksNeverComeBack() {
+        let other = Self.h()
+        let mineID = UUID()
+        let mine = Self.h(source: Self.own, meta: HealthMeta(attackID: mineID))
+        #expect(HealthService.newImports([other, mine], existingHealthIDs: [], existingAttackIDs: [], deletedIDs: [other.id, mineID]).isEmpty)
+    }
+
     @Test func metadataRoundTrip() {
-        let meta = HealthMeta(readingID: UUID(), arm: "right", position: "standing", tags: ["Stressed", "After coffee"], note: "after work")
+        let meta = HealthMeta(attackID: UUID(), intensity: 7, kind: "migraine", locations: ["left", "behindEyes"], symptoms: ["nausea"],
+                              triggers: ["stress", "poorSleep"],
+                              medications: [MedicationDose(name: "Sumatriptan", takenAt: Self.t0, effect: .partly)], note: "after work")
         #expect(HealthMeta(metadata: meta.metadata) == meta)
         #expect(HealthMeta(metadata: nil) == HealthMeta())
         #expect(HealthMeta(metadata: HealthMeta().metadata) == HealthMeta())
     }
 
-    @MainActor @Test func ownWriteRestoresAsManualWithItsId() {
-        let readingID = UUID()
-        let mine = Self.h(source: Self.own, meta: HealthMeta(readingID: readingID, arm: "right", position: "lying", tags: ["Headache"], note: "n"))
-        let r = HealthService.makeReading(mine, ownBundleID: Self.own)
-        #expect(r.id == readingID)
-        #expect(r.source == .manual)
-        #expect(r.healthKitID == mine.id)
-        #expect(r.arm == .right && r.position == .lying)
-        #expect(r.tags == ["Headache"] && r.note == "n")
+    @Test func severityMapping() {
+        #expect(HealthService.severity(for: 2) == .mild)
+        #expect(HealthService.severity(for: 5) == .moderate)
+        #expect(HealthService.severity(for: 9) == .severe)
+        #expect(HealthService.intensity(for: HKCategoryValueSeverity.mild.rawValue) == 2)
+        #expect(HealthService.intensity(for: HKCategoryValueSeverity.severe.rawValue) == 8)
+        #expect(HealthService.intensity(for: HKCategoryValueSeverity.unspecified.rawValue) == 5)
+        // The round trip stays in the same band.
+        for i in 1...10 {
+            #expect(IntensityLevel(HealthService.intensity(for: HealthService.severity(for: i).rawValue)) == IntensityLevel(i))
+        }
     }
 
-    @MainActor @Test func cuffReadingImportsAsHealth() {
-        let cuff = Self.h()
-        let r = HealthService.makeReading(cuff, ownBundleID: Self.own)
-        #expect(r.source == .health)
-        #expect(r.healthKitID == cuff.id)
-        #expect(r.value == ReadingValue(date: Self.t0, systolic: 128, diastolic: 82, pulse: 70))
+    @MainActor @Test func ownWriteRestoresWithEveryDetail() {
+        let attackID = UUID()
+        let doses = [MedicationDose(name: "Ibuprofen", takenAt: Self.t0, effect: .helped)]
+        let mine = Self.h(source: Self.own, severity: .severe,
+                          meta: HealthMeta(attackID: attackID, intensity: 9, kind: "migraine", symptoms: ["aura"], triggers: ["weather"], medications: doses, note: "n"))
+        let a = HealthService.makeAttack(mine, ownBundleID: Self.own)
+        #expect(a.id == attackID)
+        #expect(a.source == .manual)
+        #expect(a.healthKitID == mine.id)
+        #expect(a.intensity == 9 && a.kind == .migraine)
+        #expect(a.symptoms == [.aura] && a.triggers == [.weather])
+        #expect(a.medications == doses && a.note == "n")
     }
 
-    @Test func pulseMatchesClosestWithinWindow() {
-        let pulses = [(date: Self.t0.addingTimeInterval(-90), bpm: 64),
-                      (date: Self.t0.addingTimeInterval(30), bpm: 72),
-                      (date: Self.t0.addingTimeInterval(500), bpm: 99)]
-        #expect(HealthService.closestPulse(to: Self.t0, in: pulses) == 72)
-        #expect(HealthService.closestPulse(to: Self.t0.addingTimeInterval(-200), in: pulses) == 64)
-        #expect(HealthService.closestPulse(to: Self.t0.addingTimeInterval(-1000), in: pulses) == nil)
-        #expect(HealthService.closestPulse(to: Self.t0, in: []) == nil)
-    }
-}
-
-extension HealthServiceTests {
-    @Test func deletedReadingsNeverComeBack() {
-        let cuff = Self.h()
-        let mineID = UUID()
-        let mine = Self.h(source: Self.own, meta: HealthMeta(readingID: mineID))
-        let fresh = HealthService.newImports([cuff, mine], existingHealthIDs: [], existingReadingIDs: [],
-                                             deletedIDs: [cuff.id, mineID])
-        #expect(fresh.isEmpty)
+    @MainActor @Test func otherAppsHeadacheImportsAsPlainHeadache() {
+        let other = Self.h(severity: .severe)
+        let a = HealthService.makeAttack(other, ownBundleID: Self.own)
+        #expect(a.source == .health)
+        #expect(a.kind == .headache)
+        #expect(a.intensity == 8)
+        #expect(a.start == Self.t0 && a.end == Self.t0.addingTimeInterval(3 * 3600))
     }
 
     @MainActor @Test func deletionsArePersisted() {

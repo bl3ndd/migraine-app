@@ -1,46 +1,69 @@
 import Foundation
 
-/// Two months of believable readings for `-DEMO`: morning and evening, sometimes
-/// two in a row, slowly improving from Stage 1 toward Normal, with noise, a
-/// few spikes and lows, tags and the odd missed day. Deterministic, so a demo
-/// looks the same every launch.
+/// Believable history for `-DEMO`: about two attacks a week, mostly migraines
+/// with some lighter headaches, a few long ones running past midnight, triggers
+/// that cluster (poor sleep, stress, period, weather), and two medicines with
+/// different results. Deterministic, so a demo looks the same every launch.
+/// The most recent attack is at least a few days back, so Home shows a streak.
 nonisolated enum DemoData {
-    struct Sample: Equatable {
-        var value: ReadingValue
-        var tags: [String]
-    }
+    static let triptan = "Sumatriptan 50 mg"
+    static let ibuprofen = "Ibuprofen 400 mg"
 
-    static func samples(now: Date, calendar: Calendar, days: Int = 60) -> [Sample] {
+    static func attacks(now: Date, calendar: Calendar, days: Int = 90) -> [AttackValue] {
         var rng = SplitMix64(seed: 2026)
-        var out: [Sample] = []
+        var out: [AttackValue] = []
         let today = calendar.startOfDay(for: now)
-        for dayOffset in stride(from: days - 1, through: 0, by: -1) {
+        let cycleStart = calendar.date(byAdding: .day, value: -days, to: today) ?? today
+        // Skip the last few days so the demo opens on a headache-free streak.
+        for dayOffset in stride(from: days - 1, through: 4, by: -1) {
             guard let day = calendar.date(byAdding: .day, value: -dayOffset, to: today) else { continue }
-            if rng.next(100) < 8 { continue }  // missed day
-            let progress = Double(days - 1 - dayOffset) / Double(max(days - 1, 1))
-            let baseSys = 137 - 16 * progress
-            let baseDia = 85 - 11 * progress
-            for (hour, eveningBump) in [(7, 0.0), (20, -4.0)] {
-                if hour == 20, rng.next(100) < 25 { continue }  // skipped evening
-                let count = rng.next(100) < 30 ? 2 : 1
-                for i in 0..<count {
-                    let minute = 10 + Int(rng.next(40)) + i * 3
-                    guard let date = calendar.date(byAdding: .minute, value: hour * 60 + minute, to: day), date <= now else { continue }
-                    var sys = baseSys + eveningBump + Double(rng.next(13)) - 6
-                    var dia = baseDia + eveningBump / 2 + Double(rng.next(9)) - 4
-                    var tags: [String] = []
-                    switch rng.next(100) {
-                    case 0..<4: sys += 22; dia += 9; tags = ["Stressed"]
-                    case 4..<10: sys += 9; tags = ["After coffee"]
-                    case 10..<12: sys -= 30; dia -= 22; tags = ["Felt dizzy"]
-                    case 12..<30: tags = ["Took medication"]
-                    default: break
-                    }
-                    let pulse = 62 + Int(rng.next(18))
-                    out.append(Sample(value: ReadingValue(date: date, systolic: Int(sys.rounded()), diastolic: Int(dia.rounded()), pulse: pulse),
-                                      tags: tags))
-                }
+            let dayInCycle = (calendar.dateComponents([.day], from: cycleStart, to: day).day ?? 0) % 28
+            let periodDay = dayInCycle < 3
+            // ~2 a week, more around the period.
+            guard rng.next(100) < (periodDay ? 45 : 22) else { continue }
+
+            let isMigraine = rng.next(100) < 70
+            let hour = [6, 7, 9, 13, 15, 17, 19, 21][Int(rng.next(8))]
+            guard let start = calendar.date(byAdding: .minute, value: hour * 60 + Int(rng.next(50)), to: day) else { continue }
+            let intensity = isMigraine ? 5 + Int(rng.next(5)) : 2 + Int(rng.next(4))
+            let hours = isMigraine ? 4 + Double(rng.next(26)) : 1 + Double(rng.next(5))
+            let end = start.addingTimeInterval(hours * 3600 + Double(rng.next(50)) * 60)
+
+            var triggers: [Trigger] = []
+            if periodDay { triggers.append(.period) }
+            if rng.next(100) < 40 { triggers.append(.poorSleep) }
+            if rng.next(100) < 35 { triggers.append(.stress) }
+            if rng.next(100) < 20 { triggers.append(.weather) }
+            if rng.next(100) < 15 { triggers.append(.skippedMeal) }
+            if rng.next(100) < 12 { triggers.append(.screenTime) }
+            if rng.next(100) < 8 { triggers.append(.alcohol) }
+
+            var symptoms: [Symptom] = []
+            if isMigraine {
+                symptoms.append(.lightSensitivity)
+                if rng.next(100) < 60 { symptoms.append(.nausea) }
+                if rng.next(100) < 50 { symptoms.append(.soundSensitivity) }
+                if rng.next(100) < 25 { symptoms.append(.aura) }
+                if rng.next(100) < 10 { symptoms.append(.vomiting) }
+            } else if rng.next(100) < 40 {
+                symptoms.append(.neckPain)
             }
+            if rng.next(100) < 30 { symptoms.append(.fatigue) }
+
+            let side: PainLocation = [.left, .left, .right, .bothSides][Int(rng.next(4))]
+            let locations: [PainLocation] = isMigraine ? [side, .behindEyes].prefix(rng.next(100) < 50 ? 2 : 1).map { $0 } : [.forehead, .temples]
+
+            var meds: [MedicationDose] = []
+            if isMigraine, rng.next(100) < 80 {
+                let effect: MedicationEffect = [.helped, .helped, .helped, .partly, .none][Int(rng.next(5))]
+                meds.append(MedicationDose(name: triptan, takenAt: start.addingTimeInterval(1800), effect: effect))
+            } else if rng.next(100) < 60 {
+                let effect: MedicationEffect = [.partly, .partly, .helped, .none][Int(rng.next(4))]
+                meds.append(MedicationDose(name: ibuprofen, takenAt: start.addingTimeInterval(1200), effect: effect))
+            }
+
+            out.append(AttackValue(start: start, end: min(end, now), intensity: intensity, kind: isMigraine ? .migraine : .headache,
+                                   locations: locations, symptoms: symptoms, triggers: triggers, medications: meds))
         }
         return out
     }

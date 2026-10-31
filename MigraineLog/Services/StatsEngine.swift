@@ -1,189 +1,274 @@
 import Foundation
 
-/// Pure statistics over readings. No SwiftData, no clock: callers pass the
-/// readings, the calendar and "today", so every number is reproducible in tests.
+/// Which stretch of history Statistics and the report cover.
+nonisolated enum StatsPeriod: String, CaseIterable, Identifiable, Sendable {
+    case month = "30D", quarter = "90D", year = "1Y", all = "All"
+
+    var id: String { rawValue }
+
+    var days: Int? {
+        switch self {
+        case .month: 30
+        case .quarter: 90
+        case .year: 365
+        case .all: nil
+        }
+    }
+
+    /// The last `days` days up to `now`; nil for All (no lower bound).
+    func interval(now: Date) -> DateInterval? {
+        guard let days else { return nil }
+        return DateInterval(start: now.addingTimeInterval(-Double(days) * 86_400), end: now)
+    }
+
+    /// The same-length period right before `interval(now:)`, for "vs previous" deltas.
+    func previousInterval(now: Date) -> DateInterval? {
+        guard let current = interval(now: now) else { return nil }
+        return DateInterval(start: current.start.addingTimeInterval(-current.duration), end: current.start)
+    }
+}
+
+/// Pure statistics over attacks. No SwiftData, no clock: callers pass the
+/// attacks, the calendar and "now", so every number is reproducible in tests.
+///
+/// Headache days are the number neurologists ask for: a day counts once however
+/// many attacks it had, and an attack running past midnight counts on every
+/// day it touched.
 nonisolated enum StatsEngine {
-    struct Averages: Equatable, Sendable {
-        var systolic: Double
-        var diastolic: Double
-        /// nil when no reading in the group has a pulse.
-        var pulse: Double?
+    struct Summary: Equatable, Sendable {
+        var attacks: Int
+        var headacheDays: Int
+        var migraineDays: Int
+        var medicationDays: Int
+        /// Mean peak pain, nil with no attacks.
+        var averageIntensity: Double?
+        /// Mean length of attacks that have ended.
+        var averageDuration: TimeInterval?
+    }
+
+    struct MonthCount: Equatable, Sendable {
+        var month: Date
+        var headacheDays: Int
+        var migraineDays: Int
+    }
+
+    struct Share<Item: Hashable & Sendable>: Equatable, Sendable {
+        var item: Item
         var count: Int
+        /// count / attacks considered, 0…1.
+        var share: Double
     }
 
-    struct Trend: Equatable, Sendable {
-        var systolicPerWeek: Double
-        var diastolicPerWeek: Double
+    struct MedicationResult: Equatable, Sendable {
+        var name: String
+        var doses: Int
+        /// Doses with a yes / a little / no answer; "not sure" doesn't count either way.
+        var rated: Int
+        var helped: Int
+        var partly: Int
+
+        /// Share of rated doses that helped at least a little, nil before any rating.
+        var helpedShare: Double? { rated == 0 ? nil : Double(helped + partly) / Double(rated) }
     }
 
-    struct Delta: Equatable, Sendable {
-        var systolic: Double
-        var diastolic: Double
+    enum PartOfDay: Int, CaseIterable, Sendable {
+        case night, morning, afternoon, evening
+
+        var title: String {
+            switch self {
+            case .night: "Night"
+            case .morning: "Morning"
+            case .afternoon: "Afternoon"
+            case .evening: "Evening"
+            }
+        }
+
+        /// Night 0–6, morning 6–12, afternoon 12–18, evening 18–24.
+        init(hour: Int) {
+            self = PartOfDay(rawValue: min(max(hour, 0), 23) / 6) ?? .night
+        }
     }
 
-    /// Fewer points than this, or a shorter span, gives a slope that is mostly noise.
-    static let trendMinReadings = 5
-    static let trendMinDays = 7.0
+    /// Doctors look closer when acute headache medicine is taken on 10 or more
+    /// days a month (the lower medication-overuse threshold in ICHD-3). The app
+    /// only points it out and suggests asking — it never advises dosing.
+    static let medicationDaysNotice = 10
 
-    static func readings(_ readings: [ReadingValue], in interval: DateInterval) -> [ReadingValue] {
-        readings.filter { interval.contains($0.date) }
+    /// Attacks that overlap the interval at all.
+    static func attacks(_ attacks: [AttackValue], in interval: DateInterval, now: Date) -> [AttackValue] {
+        attacks.filter { $0.interval(now: now).intersects(interval) || interval.contains($0.start) }
     }
 
-    static func averages(_ readings: [ReadingValue]) -> Averages? {
-        guard !readings.isEmpty else { return nil }
-        let n = Double(readings.count)
-        let pulses = readings.compactMap(\.pulse)
-        return Averages(
-            systolic: Double(readings.map(\.systolic).reduce(0, +)) / n,
-            diastolic: Double(readings.map(\.diastolic).reduce(0, +)) / n,
-            pulse: pulses.isEmpty ? nil : Double(pulses.reduce(0, +)) / Double(pulses.count),
-            count: readings.count
+    /// Calendar days an attack touched, clipped to `interval` when given.
+    static func days(of attack: AttackValue, now: Date, calendar: Calendar, within interval: DateInterval? = nil) -> Set<Date> {
+        var span = attack.interval(now: now)
+        if let interval {
+            guard let clipped = span.intersection(with: interval) ?? (interval.contains(span.start) ? DateInterval(start: span.start, duration: 0) : nil)
+            else { return [] }
+            span = clipped
+        }
+        var result: Set<Date> = []
+        var day = calendar.startOfDay(for: span.start)
+        // An attack that ends exactly at midnight didn't touch the next day.
+        let last = span.end > span.start ? span.end.addingTimeInterval(-1) : span.end
+        let lastDay = calendar.startOfDay(for: last)
+        while day <= lastDay {
+            result.insert(day)
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+        }
+        return result
+    }
+
+    static func headacheDays(_ attacks: [AttackValue], now: Date, calendar: Calendar, within interval: DateInterval? = nil) -> Set<Date> {
+        attacks.reduce(into: Set<Date>()) { $0.formUnion(days(of: $1, now: now, calendar: calendar, within: interval)) }
+    }
+
+    static func medicationDays(_ attacks: [AttackValue], calendar: Calendar, within interval: DateInterval? = nil) -> Set<Date> {
+        Set(attacks.flatMap(\.medications)
+            .filter { interval?.contains($0.takenAt) ?? true }
+            .map { calendar.startOfDay(for: $0.takenAt) })
+    }
+
+    static func summary(_ all: [AttackValue], in interval: DateInterval?, now: Date, calendar: Calendar) -> Summary {
+        let list = interval.map { attacks(all, in: $0, now: now) } ?? all
+        let durations = list.compactMap(\.duration)
+        return Summary(
+            attacks: list.count,
+            headacheDays: headacheDays(list, now: now, calendar: calendar, within: interval).count,
+            migraineDays: headacheDays(list.filter { $0.kind == .migraine }, now: now, calendar: calendar, within: interval).count,
+            medicationDays: medicationDays(list, calendar: calendar, within: interval).count,
+            averageIntensity: mean(list.map { Double($0.intensity) }),
+            averageDuration: mean(durations)
         )
     }
 
-    /// Highest and lowest reading by systolic; ties go to the earlier reading.
-    static func extremes(_ readings: [ReadingValue]) -> (highest: ReadingValue, lowest: ReadingValue)? {
-        let sorted = readings.sorted { $0.date < $1.date }
-        guard let highest = sorted.max(by: { $0.systolic < $1.systolic }),
-              let lowest = sorted.min(by: { $0.systolic < $1.systolic }) else { return nil }
-        return (highest, lowest)
-    }
-
-    /// Average SYS − DIA.
-    static func pulsePressure(_ readings: [ReadingValue]) -> Double? {
-        mean(readings.map { Double($0.systolic - $0.diastolic) })
-    }
-
-    /// Average DIA + (SYS − DIA) / 3.
-    static func meanArterialPressure(_ readings: [ReadingValue]) -> Double? {
-        mean(readings.map { Double($0.diastolic) + Double($0.systolic - $0.diastolic) / 3 })
-    }
-
-    static func categoryDistribution(_ readings: [ReadingValue]) -> [BPCategory: Int] {
-        Dictionary(grouping: readings, by: \.category).mapValues(\.count)
-    }
-
-    /// Share (0…1) of readings below both targets.
-    static func timeInRange(_ readings: [ReadingValue], systolicBelow: Int, diastolicBelow: Int) -> Double? {
-        guard !readings.isEmpty else { return nil }
-        let inRange = readings.filter { $0.systolic < systolicBelow && $0.diastolic < diastolicBelow }
-        return Double(inRange.count) / Double(readings.count)
-    }
-
-    /// Morning is before 12:00, evening from 18:00; afternoon readings count in neither.
-    static func morningVsEvening(_ readings: [ReadingValue], calendar: Calendar) -> (morning: Averages?, evening: Averages?) {
-        let hour = { (r: ReadingValue) in calendar.component(.hour, from: r.date) }
-        return (averages(readings.filter { hour($0) < 12 }), averages(readings.filter { hour($0) >= 18 }))
-    }
-
-    /// Keyed by `Calendar` weekday (1 = Sunday … 7 = Saturday).
-    static func weekdayAverages(_ readings: [ReadingValue], calendar: Calendar) -> [Int: Averages] {
-        Dictionary(grouping: readings) { calendar.component(.weekday, from: $0.date) }.compactMapValues(averages)
-    }
-
-    /// Keyed by hour of day (0…23).
-    static func hourlyAverages(_ readings: [ReadingValue], calendar: Calendar) -> [Int: Averages] {
-        Dictionary(grouping: readings) { calendar.component(.hour, from: $0.date) }.compactMapValues(averages)
-    }
-
-    /// Least-squares slope in mmHg per week, nil until there's enough data to mean something.
-    static func trend(_ readings: [ReadingValue]) -> Trend? {
-        guard readings.count >= trendMinReadings,
-              let first = readings.map(\.date).min(),
-              let last = readings.map(\.date).max(),
-              last.timeIntervalSince(first) >= trendMinDays * 86_400 else { return nil }
-        let weeks = readings.map { $0.date.timeIntervalSince(first) / (7 * 86_400) }
-        guard let sys = slope(x: weeks, y: readings.map { Double($0.systolic) }),
-              let dia = slope(x: weeks, y: readings.map { Double($0.diastolic) }) else { return nil }
-        return Trend(systolicPerWeek: sys, diastolicPerWeek: dia)
-    }
-
-    /// Current period average minus the previous period average.
-    static func periodComparison(current: [ReadingValue], previous: [ReadingValue]) -> Delta? {
-        guard let now = averages(current), let before = averages(previous) else { return nil }
-        return Delta(systolic: now.systolic - before.systolic, diastolic: now.diastolic - before.diastolic)
-    }
-
-    /// Consecutive days with at least one reading, ending today — or yesterday,
-    /// so the streak doesn't drop to zero in the morning before the first reading.
-    static func streak(_ readings: [ReadingValue], today: Date, calendar: Calendar) -> Int {
-        let days = Set(readings.map { calendar.startOfDay(for: $0.date) })
-        var day = calendar.startOfDay(for: today)
-        if !days.contains(day) {
-            guard let yesterday = calendar.date(byAdding: .day, value: -1, to: day), days.contains(yesterday) else { return 0 }
-            day = yesterday
-        }
-        var count = 0
-        while days.contains(day) {
-            count += 1
-            guard let previous = calendar.date(byAdding: .day, value: -1, to: day) else { break }
-            day = previous
-        }
-        return count
-    }
-
-    /// One reading per calendar day, its values the day's rounded averages,
-    /// oldest first. People take several readings a day (doctors suggest 2–3
-    /// in a row, morning and evening); without this a day with six readings
-    /// would outweigh a day with one in every average, trend and percentage.
-    static func daily(_ readings: [ReadingValue], calendar: Calendar) -> [ReadingValue] {
-        dailyAverages(readings, calendar: calendar).map { day, avg in
-            ReadingValue(date: day, systolic: Int(avg.systolic.rounded()), diastolic: Int(avg.diastolic.rounded()),
-                         pulse: avg.pulse.map { Int($0.rounded()) })
+    /// Headache and migraine days per calendar month, oldest first, ending with
+    /// the month of `now`. Months without attacks are included as zeros.
+    static func monthly(_ all: [AttackValue], months: Int, now: Date, calendar: Calendar) -> [MonthCount] {
+        guard months > 0, let thisMonth = calendar.dateInterval(of: .month, for: now)?.start else { return [] }
+        return (0..<months).reversed().compactMap { back in
+            guard let start = calendar.date(byAdding: .month, value: -back, to: thisMonth),
+                  let interval = calendar.dateInterval(of: .month, for: start) else { return nil }
+            let inMonth = attacks(all, in: interval, now: now)
+            return MonthCount(month: start,
+                              headacheDays: headacheDays(inMonth, now: now, calendar: calendar, within: interval).count,
+                              migraineDays: headacheDays(inMonth.filter { $0.kind == .migraine }, now: now, calendar: calendar, within: interval).count)
         }
     }
 
-    /// One averaged point per calendar day, oldest first — the chart's "daily average" mode.
-    static func dailyAverages(_ readings: [ReadingValue], calendar: Calendar) -> [(day: Date, averages: Averages)] {
-        periodAverages(readings, by: .day, calendar: calendar)
-    }
-
-    /// One averaged point per day, week or month, oldest first, dated at the
-    /// period's start. Long charts use weeks or months so years of readings
-    /// stay readable instead of turning into a solid band.
-    static func periodAverages(_ readings: [ReadingValue], by component: Calendar.Component,
-                               calendar: Calendar) -> [(day: Date, averages: Averages)] {
-        Dictionary(grouping: readings) { calendar.dateInterval(of: component, for: $0.date)?.start ?? calendar.startOfDay(for: $0.date) }
-            .compactMap { start, group in averages(group).map { (start, $0) } }
-            .sorted { $0.day < $1.day }
-    }
-
-    /// How coarse a chart's points should be for a span of history.
-    enum ChartBucket: Equatable, Sendable {
-        case day, week, month
-
-        var component: Calendar.Component {
-            switch self {
-            case .day: .day
-            case .week: .weekOfYear
-            case .month: .month
+    /// Peak pain per day for the calendar grid.
+    static func dayPeaks(_ all: [AttackValue], now: Date, calendar: Calendar, within interval: DateInterval) -> [Date: Int] {
+        var peaks: [Date: Int] = [:]
+        for a in attacks(all, in: interval, now: now) {
+            for day in days(of: a, now: now, calendar: calendar, within: interval) {
+                peaks[day] = max(peaks[day] ?? 0, a.intensity)
             }
         }
+        return peaks
+    }
 
-        var label: String {
-            switch self {
-            case .day: "Daily averages"
-            case .week: "Weekly averages"
-            case .month: "Monthly averages"
+    static func triggerShares(_ attacks: [AttackValue]) -> [Share<Trigger>] {
+        shares(attacks, \.triggers)
+    }
+
+    static func symptomShares(_ attacks: [AttackValue]) -> [Share<Symptom>] {
+        shares(attacks, \.symptoms)
+    }
+
+    static func locationShares(_ attacks: [AttackValue]) -> [Share<PainLocation>] {
+        shares(attacks, \.locations)
+    }
+
+    /// Per medication name (case-insensitive, first spelling wins), most used first.
+    static func medicationResults(_ attacks: [AttackValue]) -> [MedicationResult] {
+        var results: [String: MedicationResult] = [:]
+        var order: [String] = []
+        for dose in attacks.flatMap(\.medications) {
+            let key = dose.name.trimmingCharacters(in: .whitespaces).lowercased()
+            guard !key.isEmpty else { continue }
+            if results[key] == nil {
+                results[key] = MedicationResult(name: dose.name.trimmingCharacters(in: .whitespaces), doses: 0, rated: 0, helped: 0, partly: 0)
+                order.append(key)
+            }
+            results[key]!.doses += 1
+            switch dose.effect {
+            case .helped: results[key]!.rated += 1; results[key]!.helped += 1
+            case .partly: results[key]!.rated += 1; results[key]!.partly += 1
+            case .none: results[key]!.rated += 1
+            case .unknown: break
             }
         }
+        return order.compactMap { results[$0] }.enumerated()
+            .sorted { $0.element.doses != $1.element.doses ? $0.element.doses > $1.element.doses : $0.offset < $1.offset }
+            .map(\.element)
+    }
 
-        /// Days for up to ~4 months, weeks up to ~13 months, months beyond:
-        /// at most ~60 points for a typical history.
-        static func forSpan(days: Int) -> ChartBucket {
-            days > 400 ? .month : days > 120 ? .week : .day
+    /// Attack starts by part of day.
+    static func partOfDayCounts(_ attacks: [AttackValue], calendar: Calendar) -> [PartOfDay: Int] {
+        Dictionary(grouping: attacks) { PartOfDay(hour: calendar.component(.hour, from: $0.start)) }.mapValues(\.count)
+    }
+
+    /// Attack starts by `Calendar` weekday (1 = Sunday … 7 = Saturday).
+    static func weekdayCounts(_ attacks: [AttackValue], calendar: Calendar) -> [Int: Int] {
+        Dictionary(grouping: attacks) { calendar.component(.weekday, from: $0.start) }.mapValues(\.count)
+    }
+
+    static func intensityCounts(_ attacks: [AttackValue]) -> [IntensityLevel: Int] {
+        Dictionary(grouping: attacks, by: \.level).mapValues(\.count)
+    }
+
+    /// Whole days since the last attack ended; 0 while one is going or one ended
+    /// today, nil with no attacks at all.
+    static func headacheFreeDays(_ attacks: [AttackValue], now: Date, calendar: Calendar) -> Int? {
+        guard !attacks.isEmpty else { return nil }
+        if attacks.contains(where: { $0.end == nil }) { return 0 }
+        guard let lastEnd = attacks.compactMap(\.end).max() else { return nil }
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: lastEnd), to: calendar.startOfDay(for: now)).day ?? 0
+        return max(0, days)
+    }
+
+    /// Headache days in the current period minus the previous one.
+    static func headacheDayChange(_ all: [AttackValue], period: StatsPeriod, now: Date, calendar: Calendar) -> Int? {
+        guard let current = period.interval(now: now), let previous = period.previousInterval(now: now) else { return nil }
+        let before = attacks(all, in: previous, now: now)
+        guard !before.isEmpty || all.contains(where: { $0.start < previous.start }) else { return nil }
+        return headacheDays(attacks(all, in: current, now: now), now: now, calendar: calendar, within: current).count
+            - headacheDays(before, now: now, calendar: calendar, within: previous).count
+    }
+
+    private static func shares<Item: Hashable & Sendable>(_ attacks: [AttackValue], _ path: KeyPath<AttackValue, [Item]>) -> [Share<Item>] {
+        guard !attacks.isEmpty else { return [] }
+        var counts: [Item: Int] = [:]
+        var order: [Item] = []
+        for a in attacks {
+            for item in Set(a[keyPath: path]) {
+                if counts[item] == nil { order.append(item) }
+                counts[item, default: 0] += 1
+            }
         }
+        let total = Double(attacks.count)
+        return order.enumerated()
+            .sorted { counts[$0.element]! != counts[$1.element]! ? counts[$0.element]! > counts[$1.element]! : $0.offset < $1.offset }
+            .map { Share(item: $0.element, count: counts[$0.element]!, share: Double(counts[$0.element]!) / total) }
     }
 
     private static func mean(_ values: [Double]) -> Double? {
         values.isEmpty ? nil : values.reduce(0, +) / Double(values.count)
     }
+}
 
-    private static func slope(x: [Double], y: [Double]) -> Double? {
-        guard let mx = mean(x), let my = mean(y) else { return nil }
-        let variance = x.reduce(0) { $0 + ($1 - mx) * ($1 - mx) }
-        guard variance > 0 else { return nil }
-        let covariance = zip(x, y).reduce(0) { $0 + ($1.0 - mx) * ($1.1 - my) }
-        return covariance / variance
+/// "3 h 20 min", "45 min", "2 d 4 h".
+nonisolated enum DurationText {
+    static func format(_ seconds: TimeInterval) -> String {
+        let minutes = Int((seconds / 60).rounded())
+        if minutes < 60 { return "\(max(minutes, 0)) min" }
+        let hours = minutes / 60
+        if hours < 48 {
+            let rest = minutes % 60
+            return rest == 0 ? "\(hours) h" : "\(hours) h \(rest) min"
+        }
+        let restHours = hours % 24
+        return restHours == 0 ? "\(hours / 24) d" : "\(hours / 24) d \(restHours) h"
     }
 }
