@@ -1,0 +1,757 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 110;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		AD0000000000000000000001 /* TelemetryDeck in Frameworks */ = {isa = PBXBuildFile; productRef = AD0000000000000000000002 /* TelemetryDeck */; };
+		BC0000000000000000000001 /* MigraineLogWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BC0000000000000000000002 /* MigraineLogWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		8DE41D323094B4BD00D1BFD2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8DE41D1C3094B4BB00D1BFD2 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8DE41D233094B4BB00D1BFD2;
+			remoteInfo = MigraineLog;
+		};
+		8DE41D3C3094B4BD00D1BFD2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8DE41D1C3094B4BB00D1BFD2 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8DE41D233094B4BB00D1BFD2;
+			remoteInfo = MigraineLog;
+		};
+		BC0000000000000000000003 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8DE41D1C3094B4BB00D1BFD2 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BC0000000000000000000010;
+			remoteInfo = MigraineLogWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		BC0000000000000000000004 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "";
+			dstSubfolder = PlugIns;
+			files = (
+				BC0000000000000000000001 /* MigraineLogWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		8DE41D243094B4BB00D1BFD2 /* MigraineLog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MigraineLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8DE41D313094B4BD00D1BFD2 /* MigraineLogTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MigraineLogTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8DE41D3B3094B4BD00D1BFD2 /* MigraineLogUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MigraineLogUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BC0000000000000000000002 /* MigraineLogWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MigraineLogWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		BC0000000000000000000005 /* Exceptions for "MigraineLogWidget" folder in "MigraineLogWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = BC0000000000000000000010 /* MigraineLogWidgetExtension */;
+		};
+		BC0000000000000000000006 /* Exceptions for "MigraineLog" folder in "MigraineLog" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 8DE41D233094B4BB00D1BFD2 /* MigraineLog */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		8DE41D263094B4BB00D1BFD2 /* MigraineLog */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				BC0000000000000000000006 /* Exceptions for "MigraineLog" folder in "MigraineLog" target */,
+			);
+			path = MigraineLog;
+			sourceTree = "<group>";
+		};
+		8DE41D343094B4BD00D1BFD2 /* MigraineLogTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = MigraineLogTests;
+			sourceTree = "<group>";
+		};
+		8DE41D3E3094B4BD00D1BFD2 /* MigraineLogUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = MigraineLogUITests;
+			sourceTree = "<group>";
+		};
+		BC0000000000000000000007 /* MigraineLogWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				BC0000000000000000000005 /* Exceptions for "MigraineLogWidget" folder in "MigraineLogWidgetExtension" target */,
+			);
+			path = MigraineLogWidget;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		8DE41D213094B4BB00D1BFD2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+				AD0000000000000000000001 /* TelemetryDeck in Frameworks */,
+			);
+		};
+		8DE41D2E3094B4BD00D1BFD2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+		8DE41D383094B4BD00D1BFD2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+		BC0000000000000000000012 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		8DE41D1B3094B4BB00D1BFD2 = {
+			isa = PBXGroup;
+			children = (
+				8DE41D263094B4BB00D1BFD2 /* MigraineLog */,
+				8DE41D343094B4BD00D1BFD2 /* MigraineLogTests */,
+				8DE41D3E3094B4BD00D1BFD2 /* MigraineLogUITests */,
+				BC0000000000000000000007 /* MigraineLogWidget */,
+				8DE41D253094B4BB00D1BFD2 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		8DE41D253094B4BB00D1BFD2 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8DE41D243094B4BB00D1BFD2 /* MigraineLog.app */,
+				8DE41D313094B4BD00D1BFD2 /* MigraineLogTests.xctest */,
+				8DE41D3B3094B4BD00D1BFD2 /* MigraineLogUITests.xctest */,
+				BC0000000000000000000002 /* MigraineLogWidgetExtension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		8DE41D233094B4BB00D1BFD2 /* MigraineLog */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8DE41D433094B4BD00D1BFD2 /* Build configuration list for PBXNativeTarget "MigraineLog" */;
+			buildPhases = (
+				8DE41D203094B4BB00D1BFD2 /* Sources */,
+				8DE41D213094B4BB00D1BFD2 /* Frameworks */,
+				8DE41D223094B4BB00D1BFD2 /* Resources */,
+				BC0000000000000000000004 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BC0000000000000000000015 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				8DE41D263094B4BB00D1BFD2 /* MigraineLog */,
+			);
+			name = MigraineLog;
+			packageProductDependencies = (
+				AD0000000000000000000002 /* TelemetryDeck */,
+			);
+			productName = MigraineLog;
+			productReference = 8DE41D243094B4BB00D1BFD2 /* MigraineLog.app */;
+			productType = "com.apple.product-type.application";
+		};
+		8DE41D303094B4BD00D1BFD2 /* MigraineLogTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8DE41D463094B4BD00D1BFD2 /* Build configuration list for PBXNativeTarget "MigraineLogTests" */;
+			buildPhases = (
+				8DE41D2D3094B4BD00D1BFD2 /* Sources */,
+				8DE41D2E3094B4BD00D1BFD2 /* Frameworks */,
+				8DE41D2F3094B4BD00D1BFD2 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8DE41D333094B4BD00D1BFD2 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				8DE41D343094B4BD00D1BFD2 /* MigraineLogTests */,
+			);
+			name = MigraineLogTests;
+			productName = MigraineLogTests;
+			productReference = 8DE41D313094B4BD00D1BFD2 /* MigraineLogTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		8DE41D3A3094B4BD00D1BFD2 /* MigraineLogUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8DE41D493094B4BD00D1BFD2 /* Build configuration list for PBXNativeTarget "MigraineLogUITests" */;
+			buildPhases = (
+				8DE41D373094B4BD00D1BFD2 /* Sources */,
+				8DE41D383094B4BD00D1BFD2 /* Frameworks */,
+				8DE41D393094B4BD00D1BFD2 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8DE41D3D3094B4BD00D1BFD2 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				8DE41D3E3094B4BD00D1BFD2 /* MigraineLogUITests */,
+			);
+			name = MigraineLogUITests;
+			productName = MigraineLogUITests;
+			productReference = 8DE41D3B3094B4BD00D1BFD2 /* MigraineLogUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		BC0000000000000000000010 /* MigraineLogWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BC0000000000000000000014 /* Build configuration list for PBXNativeTarget "MigraineLogWidgetExtension" */;
+			buildPhases = (
+				BC0000000000000000000011 /* Sources */,
+				BC0000000000000000000012 /* Frameworks */,
+				BC0000000000000000000013 /* Resources */,
+			);
+			buildRules = (
+			);
+			fileSystemSynchronizedGroups = (
+				BC0000000000000000000007 /* MigraineLogWidget */,
+			);
+			name = MigraineLogWidgetExtension;
+			productName = MigraineLogWidgetExtension;
+			productReference = BC0000000000000000000002 /* MigraineLogWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		8DE41D1C3094B4BB00D1BFD2 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2710;
+				LastUpgradeCheck = 2710;
+				TargetAttributes = {
+					8DE41D233094B4BB00D1BFD2 = {
+						CreatedOnToolsVersion = 27.1;
+					};
+					8DE41D303094B4BD00D1BFD2 = {
+						CreatedOnToolsVersion = 27.1;
+						TestTargetID = 8DE41D233094B4BB00D1BFD2;
+					};
+					8DE41D3A3094B4BD00D1BFD2 = {
+						CreatedOnToolsVersion = 27.1;
+						TestTargetID = 8DE41D233094B4BB00D1BFD2;
+					};
+					BC0000000000000000000010 = {
+						CreatedOnToolsVersion = 27.1;
+					};
+				};
+			};
+			buildConfigurationList = 8DE41D1F3094B4BB00D1BFD2 /* Build configuration list for PBXProject "MigraineLog" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 8DE41D1B3094B4BB00D1BFD2;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AD0000000000000000000003 /* XCRemoteSwiftPackageReference "SwiftSDK" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 8DE41D253094B4BB00D1BFD2 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8DE41D233094B4BB00D1BFD2 /* MigraineLog */,
+				8DE41D303094B4BD00D1BFD2 /* MigraineLogTests */,
+				8DE41D3A3094B4BD00D1BFD2 /* MigraineLogUITests */,
+				BC0000000000000000000010 /* MigraineLogWidgetExtension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		8DE41D223094B4BB00D1BFD2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		8DE41D2F3094B4BD00D1BFD2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		8DE41D393094B4BD00D1BFD2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		BC0000000000000000000013 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8DE41D203094B4BB00D1BFD2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+		8DE41D2D3094B4BD00D1BFD2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+		8DE41D373094B4BD00D1BFD2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+		BC0000000000000000000011 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		8DE41D333094B4BD00D1BFD2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8DE41D233094B4BB00D1BFD2 /* MigraineLog */;
+			targetProxy = 8DE41D323094B4BD00D1BFD2 /* PBXContainerItemProxy */;
+		};
+		8DE41D3D3094B4BD00D1BFD2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8DE41D233094B4BB00D1BFD2 /* MigraineLog */;
+			targetProxy = 8DE41D3C3094B4BD00D1BFD2 /* PBXContainerItemProxy */;
+		};
+		BC0000000000000000000015 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BC0000000000000000000010 /* MigraineLogWidgetExtension */;
+			targetProxy = BC0000000000000000000003 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		8DE41D413094B4BD00D1BFD2 /* Debug configuration for PBXProject "MigraineLog" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = A89ST3SFXS;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		8DE41D423094B4BD00D1BFD2 /* Release configuration for PBXProject "MigraineLog" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = A89ST3SFXS;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		8DE41D443094B4BD00D1BFD2 /* Debug configuration for PBXNativeTarget "MigraineLog" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = MigraineLog/MigraineLog.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = A89ST3SFXS;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MigraineLog/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Migraine Log";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Migraine Log reads headaches from Apple Health, so entries from your other apps and devices show up in your diary.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Migraine Log saves the headaches you log to Apple Health, so they stay with the rest of your health data.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = white.tea.MigraineLog;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		8DE41D453094B4BD00D1BFD2 /* Release configuration for PBXNativeTarget "MigraineLog" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = MigraineLog/MigraineLog.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = A89ST3SFXS;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MigraineLog/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Migraine Log";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Migraine Log reads headaches from Apple Health, so entries from your other apps and devices show up in your diary.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Migraine Log saves the headaches you log to Apple Health, so they stay with the rest of your health data.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = white.tea.MigraineLog;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		8DE41D473094B4BD00D1BFD2 /* Debug configuration for PBXNativeTarget "MigraineLogTests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = A89ST3SFXS;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = white.tea.MigraineLogTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MigraineLog.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MigraineLog";
+			};
+			name = Debug;
+		};
+		8DE41D483094B4BD00D1BFD2 /* Release configuration for PBXNativeTarget "MigraineLogTests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = A89ST3SFXS;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = white.tea.MigraineLogTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MigraineLog.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MigraineLog";
+			};
+			name = Release;
+		};
+		8DE41D4A3094B4BD00D1BFD2 /* Debug configuration for PBXNativeTarget "MigraineLogUITests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = A89ST3SFXS;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = white.tea.MigraineLogUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = MigraineLog;
+			};
+			name = Debug;
+		};
+		8DE41D4B3094B4BD00D1BFD2 /* Release configuration for PBXNativeTarget "MigraineLogUITests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = A89ST3SFXS;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = white.tea.MigraineLogUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = MigraineLog;
+			};
+			name = Release;
+		};
+		BC0000000000000000000016 /* Debug configuration for PBXNativeTarget "MigraineLogWidgetExtension" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = MigraineLogWidget/MigraineLogWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = A89ST3SFXS;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MigraineLogWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Migraine Log";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = white.tea.MigraineLog.MigraineLogWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		BC0000000000000000000017 /* Release configuration for PBXNativeTarget "MigraineLogWidgetExtension" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = MigraineLogWidget/MigraineLogWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = A89ST3SFXS;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MigraineLogWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Migraine Log";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = white.tea.MigraineLog.MigraineLogWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		8DE41D1F3094B4BB00D1BFD2 /* Build configuration list for PBXProject "MigraineLog" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8DE41D413094B4BD00D1BFD2 /* Debug configuration for PBXProject "MigraineLog" */,
+				8DE41D423094B4BD00D1BFD2 /* Release configuration for PBXProject "MigraineLog" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		8DE41D433094B4BD00D1BFD2 /* Build configuration list for PBXNativeTarget "MigraineLog" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8DE41D443094B4BD00D1BFD2 /* Debug configuration for PBXNativeTarget "MigraineLog" */,
+				8DE41D453094B4BD00D1BFD2 /* Release configuration for PBXNativeTarget "MigraineLog" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		8DE41D463094B4BD00D1BFD2 /* Build configuration list for PBXNativeTarget "MigraineLogTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8DE41D473094B4BD00D1BFD2 /* Debug configuration for PBXNativeTarget "MigraineLogTests" */,
+				8DE41D483094B4BD00D1BFD2 /* Release configuration for PBXNativeTarget "MigraineLogTests" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		8DE41D493094B4BD00D1BFD2 /* Build configuration list for PBXNativeTarget "MigraineLogUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8DE41D4A3094B4BD00D1BFD2 /* Debug configuration for PBXNativeTarget "MigraineLogUITests" */,
+				8DE41D4B3094B4BD00D1BFD2 /* Release configuration for PBXNativeTarget "MigraineLogUITests" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		BC0000000000000000000014 /* Build configuration list for PBXNativeTarget "MigraineLogWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BC0000000000000000000016 /* Debug configuration for PBXNativeTarget "MigraineLogWidgetExtension" */,
+				BC0000000000000000000017 /* Release configuration for PBXNativeTarget "MigraineLogWidgetExtension" */,
+			);
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		AD0000000000000000000003 /* XCRemoteSwiftPackageReference "SwiftSDK" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/TelemetryDeck/SwiftSDK";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.14.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AD0000000000000000000002 /* TelemetryDeck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AD0000000000000000000003 /* XCRemoteSwiftPackageReference "SwiftSDK" */;
+			productName = TelemetryDeck;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 8DE41D1C3094B4BB00D1BFD2 /* Project object */;
+	validationLevel = 1;
+}

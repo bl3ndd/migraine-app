@@ -1,0 +1,39 @@
+import Testing
+import Foundation
+@testable import MigraineLog
+
+struct DemoDataTests {
+    let now = Date(timeIntervalSince1970: 1_800_000_000)
+    var calendar: Calendar {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(identifier: "America/New_York")!
+        return c
+    }
+
+    @Test func plausibleAndDeterministic() {
+        let a = DemoData.samples(now: now, calendar: calendar)
+        #expect(a == DemoData.samples(now: now, calendar: calendar))
+        #expect(a.count > 60)
+        #expect(a.allSatisfy { ReadingLimits.isValid(systolic: $0.value.systolic, diastolic: $0.value.diastolic, pulse: $0.value.pulse) })
+        #expect(a.allSatisfy { $0.value.date <= now })
+    }
+
+    @Test func coversSeveralCategoriesAndImproves() {
+        let a = DemoData.samples(now: now, calendar: calendar)
+        let days = StatsEngine.daily(a.map(\.value), calendar: calendar)
+        #expect(Set(days.map(\.category)).count >= 3)
+        #expect(StatsEngine.trend(days)!.systolicPerWeek < 0)
+    }
+}
+
+extension DemoDataTests {
+    /// Store screenshots come from this data: it should show a varied, improving picture.
+    @Test func showsVariedCategoriesForScreenshots() {
+        let days = StatsEngine.daily(DemoData.samples(now: now, calendar: calendar).map(\.value), calendar: calendar)
+        let distribution = StatsEngine.categoryDistribution(days)
+        #expect((distribution[.normal] ?? 0) > 0)
+        #expect((distribution[.elevated] ?? 0) > 0)
+        #expect((distribution[.stage1] ?? 0) > 0)
+        #expect(StatsEngine.timeInRange(days, systolicBelow: 130, diastolicBelow: 80)! > 0.25)
+    }
+}

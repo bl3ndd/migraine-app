@@ -1,0 +1,37 @@
+# Simply BP
+
+iOS blood pressure diary. SwiftUI, SwiftData, Swift Charts, HealthKit, StoreKit 2, TelemetryDeck (the only package; anonymous usage counts, no health data). iOS 18+.
+
+Docs: `SPEC.md` (what the app does), `PLAN.md` (implementation plan), `ASO.md` (App Store metadata and review notes), `PRIVACY.md` (privacy policy draft).
+
+## Run
+
+Open `MigraineLog.xcodeproj`, scheme **MigraineLog**, run on a device.
+
+- **StoreKit:** Product › Scheme › Edit Scheme › Run › Options › StoreKit Configuration › `MigraineLog.storekit`, so the Pro purchase works without App Store Connect.
+- **HealthKit:** turn on Settings › Apple Health in the app. To simulate a smart cuff, add a blood pressure sample in the Health app, then reopen Simply BP.
+
+Launch arguments (Debug only):
+
+| Argument | Effect |
+|---|---|
+| `-FREE` | Treat as not Pro, even if the sandbox owns the purchase |
+| `-SNAPSHOT…` | Treat as Pro and suppress the review prompt (screenshots) |
+
+## Test
+
+Unit tests (Swift Testing) run on the connected iPhone over USB:
+
+```bash
+xcodebuild test -project MigraineLog.xcodeproj -scheme MigraineLog \
+  -destination 'id=<device UDID>' -only-testing:MigraineLogTests -allowProvisioningUpdates
+```
+
+Covered: categories and input limits, every `StatsEngine` function including daily averaging, Health metadata/import/dedup, JSON backup round trip, Pro gating and range intervals, PDF content and pagination, reminder requests, review prompt rules.
+
+## Before submission
+
+See `PLAN.md` › Task 11 compliance checklist. Still to do:
+
+- Create the IAP `white.tea.MigraineLog.pro` ($14.99, non-consumable) in App Store Connect
+- Privacy policy is live at https://bp-app-site.vercel.app/privacy.html (`site/`, deployed by Vercel on push)
