@@ -11,6 +11,7 @@ import TelemetryDeck
 /// UI tests or `-SNAPSHOT` runs. DEBUG builds are flagged as test signals by the SDK.
 enum Analytics {
     /// TelemetryDeck App ID. Public UUID, not a secret.
+    /// TODO before release: still Simply BP's app — create a Migraine Log app in TelemetryDeck and put its ID here.
     static let appID = "23B18CBB-2859-4084-A182-F5097B548D02"
     /// The org namespace: signals sent without it never reach the dashboard.
     static let namespace = "com.whitteam"

@@ -10,7 +10,8 @@
 2. App Store Connect: create the app (name `Migraine Log: Headache Tracker`, bundle `white.tea.MigraineLog`, SKU e.g. `migraine-log-ios`), then the IAP `white.tea.MigraineLog.pro`, non-consumable, $14.99, display name "Migraine Log Pro".
 3. Run `scripts/asc_fill.py` (metadata, categories, age rating, review notes) and `appstore_screenshots/upload.py` (screenshots + IAP review shot).
 4. Optional: check the keyword field popularity with `aso.py keywords_migraine_meta.txt` (fresh cookie) and swap dead words.
-5. Archive and upload the build via the Xcode account; App Privacy (Usage Data › Product Interaction, not linked, analytics); review video; header asset; submit with the IAP.
+5. TelemetryDeck: create a separate app for Migraine Log and put its App ID into `AnalyticsService.swift` (`Analytics.appID` is still Simply BP's, so signals would land in the BP dashboard).
+6. Archive and upload the build via the Xcode account; App Privacy (Usage Data › Product Interaction, not linked, analytics); review video; header asset; submit with the IAP.
 
 ## Decisions
 
