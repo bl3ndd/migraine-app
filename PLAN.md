@@ -13,6 +13,11 @@
 5. TelemetryDeck: create a separate app for Migraine Log and put its App ID into `AnalyticsService.swift` (`Analytics.appID` is still Simply BP's, so signals would land in the BP dashboard).
 6. Archive and upload the build via the Xcode account; App Privacy (Usage Data › Product Interaction, not linked, analytics); review video; header asset; submit with the IAP.
 
+## What's left (code, not blocking submit)
+
+- VoiceOver: make `IntensityPicker` one adjustable element (swipe up/down changes pain). Skipped because the UI tests tap its "Pain N" buttons; switch the tests to `adjust(toNormalizedSliderPosition:)` or keep hidden per-level buttons for tests.
+- After release: run `aso-keywords/rank.py` for the Migraine Log keywords 1–2 weeks in, and swap keyword-field words that don't rank.
+
 ## Decisions
 
 - Name in the store vs app: `Migraine Log: Headache Tracker` (exact "migraine tracker" phrase goes into the subtitle; the obvious names were taken).
