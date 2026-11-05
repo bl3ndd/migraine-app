@@ -27,9 +27,9 @@ With near-zero ratings our apps rank only for phrases in the title and subtitle 
 
 - **Name (30/30):** `Migraine Log: Headache Tracker`
 - **Subtitle (29/30):** `Migraine Tracker & Pain Diary`
-- **Keywords (93/100), no repeats of name/subtitle words:**
-  `aura,trigger,journal,calendar,symptom,medication,relief,attack,chronic,tension,weather,period`
-  Not yet checked for popularity: run `aso.py keywords_migraine_meta.txt` with a fresh cookie and drop the dead (5) ones before submitting.
+- **Keywords (95/100), no repeats of name/subtitle words:**
+  `symptom,medication,pill,barometric,pressure,monitor,aura,trigger,attack,chronic,tension,weather`
+  Checked 2026-11-05 (`aso-keywords/results_keywords_migraine_meta_us.csv`). Live: medication tracker 48 (a top-5 app has 6 ratings), symptom tracker 42, pill tracker 31, barometric pressure 29, medication log 28, migraine monitor 14. The name and subtitle already cover headache tracker 39, migraine 38, pain tracker 32 (top-5 median 7), migraine tracker 30, headache diary 27, migraine diary 26, headache 25. The rest of the field is on-topic filler at popularity 5. Dropped as dead: journal, calendar, relief, period.
 - **Primary category:** Health & Fitness. **Secondary:** Medical.
 - **Age rating:** answer honestly; medical/treatment information = "infrequent/mild" at most.
 
